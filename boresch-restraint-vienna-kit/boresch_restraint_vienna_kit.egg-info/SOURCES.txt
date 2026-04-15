@@ -1,8 +1,0 @@
-drawing_boresch_restraints.py
-pyproject.toml
-restraints_william.py
-boresch_restraint_vienna_kit.egg-info/PKG-INFO
-boresch_restraint_vienna_kit.egg-info/SOURCES.txt
-boresch_restraint_vienna_kit.egg-info/dependency_links.txt
-boresch_restraint_vienna_kit.egg-info/requires.txt
-boresch_restraint_vienna_kit.egg-info/top_level.txt

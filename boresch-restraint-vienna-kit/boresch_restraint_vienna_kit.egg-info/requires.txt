@@ -1,8 +1,0 @@
-rdkit
-MDAnalysis
-numpy
-rich
-scipy
-pandas
-openfe
-openmm
