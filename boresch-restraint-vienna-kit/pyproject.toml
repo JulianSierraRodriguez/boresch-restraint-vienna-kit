@@ -1,0 +1,26 @@
+[project]
+name = "boresch-restraint-vienna-kit"
+version = "0.0.1"
+requires-python = ">=3.10"
+dependencies = [
+  "rdkit",
+  "MDAnalysis",
+  "numpy",
+  "rich",
+  "scipy",
+  "pandas",
+  "openfe",
+  "openmm",
+  "pint",
+  "openpyxl"
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
