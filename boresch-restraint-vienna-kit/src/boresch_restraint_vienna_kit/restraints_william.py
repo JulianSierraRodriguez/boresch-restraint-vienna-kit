@@ -299,6 +299,9 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
   
   bonded_g0 = []
   bondeds_g1 = []
+  triads_guest_atoms = []
+  triads_host_atoms = [] 
+
   if g0.index in mda_guest_candidates_idx:
     bonds_acceptor = g0.bonds
     for bond in bonds_acceptor:
@@ -317,8 +320,6 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
       bondeds_g1.append(g1_temp)
       print(f'       - Bonded atoms to G1 ({g1.name}) : {[atom.name for atom in g1_temp]}')
 
-    triads_guest_atoms = []
-
     for i in range(len(bonded_g0)):
       g1 = bonded_g0[i]
       bonded_to_g1 = bondeds_g1[i]
@@ -330,7 +331,6 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
         print(f'                   {[universe_mda.atoms[idx].name for idx in triad]}')
 
     print('\n   - Selecting Triads of anchor candidates for Host.')
-    triads_host_atoms = [] 
     print(f'     - H-bond in residue {hx.resname}{hx.resid}, selecting their CA, C and N.')
 
     alpha_c = universe_mda.select_atoms(f'name CA and resname {hx.resname} and resid {hx.resid}')[0]
@@ -620,7 +620,6 @@ def scoring_candidates(universe_mda,final_candidates):
     atom = universe_mda.atoms[final_candidates[lowest_score_idx][i]]
     print(f'    {atom_roles[i]} ---> {atom.resname}{atom.resid}-{atom.name} (index {atom.index+1})')
 
-  print('\n END of SCRIPT \n')
   return final_candidates[lowest_score_idx], last_frames_vars[lowest_score_idx]
 
 def restraint_search_william(guest_sdf_name:str,

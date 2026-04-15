@@ -64,7 +64,7 @@ for i in range(number_repeats):
                           pdb_NPT_final            = 'NPT_system.pdb'
                           )
 
-  production_simulations( folder_prep       = 'system_prep',
+  traj_name = production_simulations( folder_prep       = 'system_prep',
                           timestep          = 2.0*unit.femtosecond,
                           friction_coeff    = 1.0*1/unit.picosecond,
                           md_temperature    = 298.15*unit.kelvin,
@@ -79,7 +79,7 @@ for i in range(number_repeats):
   anchors, universe_mda, last_frame_vars = restraint_search_william(guest_sdf_name   = '2f.sdf',
                                                    debug_info       = False,
                                                    pdb_name_search  = 'last_frame_1.pdb',
-                                                   traj_name        = 'traj_1ns_1.dcd',
+                                                   traj_name        = f'{traj_name}_1.dcd',
                                                    guest_resname    = 'UNK',
                                                    step_hbond       = 1, 
                                                    population_hbond = 0.5,
@@ -119,7 +119,7 @@ for i in range(number_repeats):
   u, host_atoms, guest_atoms, last_frame_vars = restraint_search_openfe(pdb_name_search = 'last_frame_1.pdb',
                                                            guest_sdf_name  = '2f.sdf',
                                                            guest_resname   = 'UNK',
-                                                           trajectory_name = 'traj_1ns_1.dcd',
+                                                           trajectory_name = f'{traj_name}_1.dcd',
                                                            path            = '.',
                                                            temperature     = 298.15 
                                                            ) 
@@ -183,6 +183,8 @@ df_W = pd.DataFrame({
 
 df = pd.concat([df_openfe, df_W], ignore_index=True)
 
-df.to_csv("comparison_W_openfe_10x1ns.csv", index=False)
-df.to_excel("comparison_W_openfe_10x1ns.xlsx", index=False)
-df.to_pickle("comparison_W_openfe_10x1ns.pkl")
+lengthmd = traj_name.split('_')[1]
+
+df.to_csv(f"comparison_W_openfe_{number_repeats}x{lengthmd}.csv", index=False)
+df.to_excel(f"comparison_W_openfe_{number_repeats}x{lengthmd}.xlsx", index=False)
+df.to_pickle(f"comparison_W_openfe_{number_repeats}x{lengthmd}.pkl")

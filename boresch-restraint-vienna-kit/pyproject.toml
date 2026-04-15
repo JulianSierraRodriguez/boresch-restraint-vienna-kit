@@ -12,7 +12,8 @@ dependencies = [
   "openfe",
   "openmm",
   "pint",
-  "openpyxl"
+  "openpyxl",
+  "matplotlib"
 ]
 
 [build-system]

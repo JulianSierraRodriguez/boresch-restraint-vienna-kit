@@ -535,3 +535,4 @@ def production_simulations( folder_prep:str              = 'system_prep',
     print('\nDONE')
 
     save_checkpoint_for_restart(i,system,simulation,integrator)
+  return traj_name
