@@ -342,6 +342,9 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
     for i in range(len(triads_host_atoms)):
       print(f'       - Triad {i} : {[idx for idx in triads_host_atoms[i]]}')
       print(f'                   {[universe_mda.atoms[idx].name for idx in triads_host_atoms[i]]}')
+    
+  triads_guest_atoms = [t for t in triads_guest_atoms if len(t) == 3]
+  triads_host_atoms = [t for t in triads_host_atoms if len(t) == 3]
 
   return triads_guest_atoms, triads_host_atoms
 
