@@ -134,14 +134,14 @@ def plot_restraints(pdb_name:str,
 
     #* Remember to add one to what you get from the openfe.log
     #! HOST ATOMS !#
-    h0 = u.select_atoms(f'id {anchors[0] +host_idx_corrector}') 
-    h1 = u.select_atoms(f'id {anchors[1] +host_idx_corrector}') 
-    h2 = u.select_atoms(f'id {anchors[2] +host_idx_corrector}') 
+    h0 = u.select_atoms(f'id {anchors[0] + host_idx_corrector}') 
+    h1 = u.select_atoms(f'id {anchors[1] + host_idx_corrector}') 
+    h2 = u.select_atoms(f'id {anchors[2] + host_idx_corrector}') 
 
     #! GUEST ATOMS !#
-    g0 = u.select_atoms(f'id {anchors[3] +guest_idx_corrector}') 
-    g1 = u.select_atoms(f'id {anchors[4] +guest_idx_corrector}') 
-    g2 = u.select_atoms(f'id {anchors[5] +guest_idx_corrector}') 
+    g0 = u.select_atoms(f'id {anchors[3] + guest_idx_corrector}') 
+    g1 = u.select_atoms(f'id {anchors[4] + guest_idx_corrector}') 
+    g2 = u.select_atoms(f'id {anchors[5] + guest_idx_corrector}') 
 
     atoms = [h0, h1, h2, g0, g1, g2]
     names = [a[0].name for a in atoms]

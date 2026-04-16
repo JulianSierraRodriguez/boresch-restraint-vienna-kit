@@ -491,6 +491,9 @@ def check_distance_guest_COM(universe_mda,unique_candidates_restraints,ligand_at
       com = ligand_atoms.center_of_mass()
       dist = np.linalg.norm(pos_g0 - com)
       dists.append(dist)
+    if not dists:
+        print(f"Skipping candidate {i}: no trajectory data")
+        continue
 
     avg_dist = np.average(dists)
 

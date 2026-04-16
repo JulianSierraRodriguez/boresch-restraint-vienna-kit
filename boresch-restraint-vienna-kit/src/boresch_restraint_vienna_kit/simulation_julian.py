@@ -8,33 +8,127 @@ from openmmforcefields.generators import SystemGenerator
 from openff.toolkit.topology import Molecule
 from openfe.protocols.openmm_utils.omm_settings import OpenFFPartialChargeSettings
 from openfe.protocols.openmm_utils.charge_generation import bulk_assign_partial_charges
-# from rich.pretty import Pretty
-# from rich.console import Console
 from sys import stdout
 import numpy as np
 import os, pathlib
-# from pathlib import Path
+from openmm.app import PDBFile,Modeller,ForceField
+from pdbfixer import PDBFixer
 
-# from MDAnalysis.lib.distances import calc_bonds, calc_angles, calc_dihedrals
+def tester_for_bad_template(pdb_name:str):
+  print('Testing protein for bad template OpenMM error.')
+  pdb = PDBFile(f'{pdb_name}_CLEAN.pdb')
+  ff = ForceField('amber14/protein.ff14SB.xml')
+  mod = Modeller(pdb.topology, pdb.positions)
+  ff.createSystem(mod.topology)
 
-# from openfe.protocols.openmm_afe.equil_afe_settings import BoreschRestraintSettings
-# from openfe.protocols.openmm_afe.abfe_units import ABFEComplexSetupUnit
-# from openff.units import unit as off_unit
-from openmm.app import PDBFile
-# from pint import UnitRegistry
+def preparing_protein_from_PDBank(pdb_name:str,
+                                  residues_to_remove:dict,
+                                  protonate:bool):
+  print('Preparing Protein-only PDB:')
+  pdb = PDBFile(f'{pdb_name}_fixed.pdb')
+
+  modeller = Modeller(pdb.topology, pdb.positions)
+  print(' - Deleting Waters')
+  modeller.deleteWater()
+
+  print(' - Deleting non-protein atoms.')
+  atoms_to_delete = [
+      atom for atom in modeller.topology.atoms()
+      if atom.residue.name in residues_to_remove
+  ]
+
+  modeller.delete(atoms_to_delete)
+
+  if protonate:
+    print(' - Protonating protein.')
+    forcefield = ForceField(
+    	'amber/ff14SB.xml',
+    	'amber/tip3p_standard.xml',
+    	'amber/tip3p_HFE_multivalent.xml',
+    	'amber/phosaa10.xml'
+    )
+
+    modeller.addHydrogens(forcefield=forcefield,
+                          pH=7.4)
+
+  print(' - Checking protein for connectivity problems.')
+  for chain in modeller.topology.chains():
+      for res1, res2 in zip(chain.residues(), list(chain.residues())[1:]):
+          # Check if residues are sequential
+          if res2.index != res1.index + 1:
+              print('  - Chain break between:', res1, 'and', res2, '. NEEDS SOLVING!!!')
+
+  print(f' - Saving clean protein-only PDB as: {pdb_name}_CLEAN.pdb')
+  PDBFile.writeFile(modeller.topology, modeller.positions, open(f'{pdb_name}_CLEAN.pdb', 'w'))
+
+  tester_for_bad_template(pdb_name)
+
+def preparing_ligand_from_PDBank(pdb_name:str,
+                                lig_resname:str,
+                                protonate:bool):
+  
+  print('\nPreparing SDF file of ligand.')
+  pdb = PDBFile(f'{pdb_name}_fixed.pdb')
+
+  print(' - Deleting non-ligand atoms.')
+  modeller = Modeller(pdb.topology, pdb.positions)
+  atoms_to_delete = [
+      atom for atom in modeller.topology.atoms()
+      if atom.residue.name != lig_resname ]
+
+  modeller.delete(atoms_to_delete)
+  print(f'Saving ligand-only PDB as lig_{lig_resname}.pdb')
+  PDBFile.writeFile(modeller.topology, modeller.positions, open(f'lig_{lig_resname}.pdb', 'w'))
+
+  print(f'Opening lig_{lig_resname}.pdb with rdkit.Chem')
+  mol = Chem.MolFromPDBFile(f'lig_{lig_resname}.pdb', removeHs=False)
+  if protonate:
+    print(' - Protonating ligand.')
+    mol = Chem.AddHs(mol)
+
+  print(f'Saving ligand-only SDF as lig_{lig_resname}.sdf')
+  writer = Chem.SDWriter(f'lig_{lig_resname}.sdf')
+  writer.write(mol)
+  writer.close()
 
 
+  return
+
+def preparing_from_PDBank(pdb_name:str,
+                          lig_resname:str,
+                          residues_to_remove:dict,
+                          protonate:bool):
+  print('Fixing PDB')
+  fixer = PDBFixer(filename=f'{pdb_name}.pdb')
+  fixer.findMissingResidues()
+  print(fixer.findMissingResidues)
+  fixer.findMissingAtoms()
+  print(fixer.findMissingAtoms)
+  fixer.addMissingAtoms()
+
+  print(f'Saving fixed PDB as {pdb_name}_fixed.pdb')
+  with open(f'{pdb_name}_fixed.pdb', 'w') as f:
+    PDBFile.writeFile(fixer.topology, fixer.positions, f)
+
+  preparing_protein_from_PDBank(pdb_name,
+                                residues_to_remove,
+                                protonate)
+  
+  preparing_ligand_from_PDBank(pdb_name,
+                                lig_resname,
+                                protonate)
+  return
 
 def preparing_ligand(molecule_name:str):
   #! Getting Ligand !#
-  supp = Chem.SDMolSupplier(f"{molecule_name}.sdf", removeHs=False)
+  supp = Chem.SDMolSupplier(f'{molecule_name}.sdf', removeHs=False)
   orig_rdkit = supp[0]
   ligands = [openfe.SmallMoleculeComponent.from_rdkit(mol) for mol in supp]
 
   #! Charging the Ligand !#
   # To have the ligand's FF parameters.
 
-  charge_settings = OpenFFPartialChargeSettings(partial_charge_method="am1bcc", off_toolkit_backend="ambertools")
+  charge_settings = OpenFFPartialChargeSettings(partial_charge_method='am1bcc', off_toolkit_backend='ambertools')
 
   ligands = bulk_assign_partial_charges(
     molecules=ligands,
@@ -49,8 +143,8 @@ def preparing_ligand(molecule_name:str):
 
 def system_solvated_PDB(pdb_name:str,
                         orig_rdkit,
-                        forcefield:list = ["amber/ff14SB.xml", "amber/tip3p_standard.xml", "amber/tip3p_HFE_multivalent.xml", "amber/phosaa10.xml"],
-                        forcefield_small_molecule:str = "openff-2.2.1" 
+                        forcefield:list = ['amber/ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml', 'amber/phosaa10.xml'],
+                        forcefield_small_molecule:str = 'openff-2.2.1' 
                         ):
   #! We will use the coordinates from the PDB !#
 
@@ -104,10 +198,10 @@ def system_solvated_PDB(pdb_name:str,
 
 def solvating_system(pdb_name,
                      ligands,
-                     forcefield:list = ["amber/ff14SB.xml", "amber/tip3p_standard.xml", "amber/tip3p_HFE_multivalent.xml", "amber/phosaa10.xml"],
-                     forcefield_small_molecule:str = "openff-2.2.1",
-                     protein_ligand_pdb = "protein_ligand_system.pdb",
-                     solvated_pdb = "solvated_system.pdb",
+                     forcefield:list = ['amber/ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml', 'amber/phosaa10.xml'],
+                     forcefield_small_molecule:str = 'openff-2.2.1',
+                     protein_ligand_pdb = 'protein_ligand_system.pdb',
+                     solvated_pdb = 'solvated_system.pdb',
 ):
   protein = app.PDBFile(pdb_name)
 
@@ -118,7 +212,7 @@ def solvating_system(pdb_name,
   modeller = app.Modeller(protein.topology, protein.positions)
   modeller.add(ligand_top,ligand_pos)
 
-  with open(protein_ligand_pdb, "w") as f:
+  with open(protein_ligand_pdb, 'w') as f:
     app.PDBFile.writeFile(
       modeller.topology,
       modeller.positions,
@@ -147,7 +241,7 @@ def solvating_system(pdb_name,
     ionicStrength = 0.15 * unit.molar
   )
 
-  with open(solvated_pdb, "w") as f:
+  with open(solvated_pdb, 'w') as f:
     app.PDBFile.writeFile(
       modeller.topology,
       modeller.positions,
@@ -291,9 +385,9 @@ def simulation_NPT(simulation,
   return simulation,system,npt_state
 
 def save_checkpoint_for_restart(iter,system,simulation,integrator):
-  with open(f"system_{iter}.xml", "w") as f:
+  with open(f'system_{iter}.xml', 'w') as f:
     f.write(XmlSerializer.serialize(system))
-  with open(f"integrator_{iter}.xml", "w") as f:
+  with open(f'integrator_{iter}.xml', 'w') as f:
     f.write(XmlSerializer.serialize(integrator))
   state = simulation.context.getState(
     getPositions=True,
@@ -302,15 +396,14 @@ def save_checkpoint_for_restart(iter,system,simulation,integrator):
     getForces=False,
     enforcePeriodicBox=True
   )
-  with open(f"state_{iter}.xml", "w") as f:
+  with open(f'state_{iter}.xml', 'w') as f:
     f.write(XmlSerializer.serialize(state))
 
   simulation.saveCheckpoint(f'checkpoint_{iter}.chk')
   positions = state.getPositions()
 
-  with open(f"last_frame_{iter}.pdb", "w") as f:
+  with open(f'last_frame_{iter}.pdb', 'w') as f:
       PDBFile.writeFile(simulation.topology, positions, f)
-
 
 def preparation_simulations(molecule_name:str,
                             pdb_name:str,
@@ -345,16 +438,16 @@ def preparation_simulations(molecule_name:str,
   if solvated_PDB:
     system, topology, positions = system_solvated_PDB(pdb_name,
                                                     orig_rdkit,
-                                                    forcefield = ["amber/ff14SB.xml", "amber/tip3p_standard.xml", "amber/tip3p_HFE_multivalent.xml", "amber/phosaa10.xml"],
-                                                    forcefield_small_molecule = "openff-2.2.1" )
+                                                    forcefield = ['amber/ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml', 'amber/phosaa10.xml'],
+                                                    forcefield_small_molecule = 'openff-2.2.1' )
 
   else:
     system, topology, positions = solvating_system(pdb_name,
                                                  ligands,
-                                                 forcefield = ["amber/ff14SB.xml", "amber/tip3p_standard.xml", "amber/tip3p_HFE_multivalent.xml", "amber/phosaa10.xml"],
-                                                 forcefield_small_molecule = "openff-2.2.1",
-                                                 protein_ligand_pdb = "protein_ligand_system.pdb",
-                                                 solvated_pdb = "solvated_system.pdb",)
+                                                 forcefield = ['amber/ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml', 'amber/phosaa10.xml'],
+                                                 forcefield_small_molecule = 'openff-2.2.1',
+                                                 protein_ligand_pdb = 'protein_ligand_system.pdb',
+                                                 solvated_pdb = 'solvated_system.pdb',)
 
   integrator, simulation = setting_up_simulation(md_temperature,
                           friction_coeff,
@@ -415,17 +508,17 @@ def set_up_with_checkpoint(iter,
   
   pdb = app.PDBFile(f'{folder}/last_frame_{iter-1}.pdb')
 
-  with open(f"{folder}/system_{iter-1}.xml") as f:
+  with open(f'{folder}/system_{iter-1}.xml') as f:
       system = XmlSerializer.deserialize(f.read())
 
-  with open(f"{folder}/integrator_{iter-1}.xml") as f:
+  with open(f'{folder}/integrator_{iter-1}.xml') as f:
       integrator = XmlSerializer.deserialize(f.read())
 
-  platform = Platform.getPlatformByName("CUDA")
-  properties = {"Precision": "mixed"}  # MUST match original run
+  platform = Platform.getPlatformByName('CUDA')
+  properties = {'Precision': 'mixed'}  # MUST match original run
   simulation = app.Simulation(pdb.topology, system, integrator, platform, properties)
 
-  with open(f"{folder}/checkpoint_{iter-1}.chk", "rb") as f:
+  with open(f'{folder}/checkpoint_{iter-1}.chk', 'rb') as f:
       simulation.context.loadCheckpoint(f.read())
 
   # Doing this seems to be stabilizing CUDA

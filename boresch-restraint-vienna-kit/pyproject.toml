@@ -13,7 +13,8 @@ dependencies = [
   "openmm",
   "pint",
   "openpyxl",
-  "matplotlib"
+  "matplotlib",
+  "pdbfixer"
 ]
 
 [build-system]
