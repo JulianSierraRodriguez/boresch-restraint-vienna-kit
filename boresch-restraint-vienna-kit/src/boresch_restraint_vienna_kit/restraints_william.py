@@ -32,8 +32,9 @@ def find_guest_candidates(guest_sdf_name,debug_info):
   
   guest_candidates = [atom for atom in guest_rdmol.GetAtoms() if len([n for n in atom.GetNeighbors() if n.GetAtomicNum() != 1]) >= 2]
 
+
   # From the array with the guest candidates we are generating an array with the atom indexes from the candidates. 
-  guest_candidates_ids  = [atom.GetIdx() for atom in guest_candidates]
+  guest_candidates_ids  = [atom.GetIdx()+2 for atom in guest_candidates]
 
   if debug_info:
     # Additional information: We compute the number of atoms of each type selected as candidates.
@@ -76,7 +77,8 @@ def setting_up_mda(pdb_name,traj_name,guest_resname,guest_candidates_ids):
 
   u.atoms.guess_bonds(
     vdwradii={'Na' : 0,
-              'Cl' : 0}
+              'Cl' : 0,
+              'Br': 1.85}
   )
 
   #* Coverting guest candidate list to MDA indexes*#
@@ -90,9 +92,16 @@ def setting_up_mda(pdb_name,traj_name,guest_resname,guest_candidates_ids):
     mda_guest_candidates.append(atom)
     # mda_guest_candidates_elem.append(atom.element)
     mda_guest_candidates_idx.append(int(atom.index))
+  
+  
 
   print('\nIndexes of the guest\'s candidate atoms (full system):')
   print(mda_guest_candidates_idx,'\n')
+  mda_guest_candidates_names = [
+      u.atoms[i-2].name
+      for i in mda_guest_candidates_idx
+  ]  
+  print(mda_guest_candidates_names)
   return mda_guest_candidates_idx, u, ligand_atoms
 
 def hbond_filter1(universe_mda,ligand_atoms, hbonds, debug_info):
@@ -302,11 +311,11 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
   triads_guest_atoms = []
   triads_host_atoms = [] 
 
-  if g0.index in mda_guest_candidates_idx:
+  if g0.index+2 in mda_guest_candidates_idx:
     bonds_acceptor = g0.bonds
     for bond in bonds_acceptor:
       bonded_atom = bond.partner(g0)
-      if bonded_atom.index in mda_guest_candidates_idx:
+      if bonded_atom.index+2 in mda_guest_candidates_idx:
         bonded_g0.append(bonded_atom)
         
     print(f'\n     - Bonded atoms to G0 ({g0.resname}{g0.resid}-{g0.name}) : {[atom.name for atom in bonded_g0]}')
@@ -315,7 +324,7 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
       g1_temp = []
       for bond in bonds_g1:
         bonded_atom = bond.partner(g1)
-        if bonded_atom != g0 and bonded_atom.index in mda_guest_candidates_idx:
+        if bonded_atom != g0 and bonded_atom.index+2 in mda_guest_candidates_idx:
           g1_temp.append(bonded_atom)
       bondeds_g1.append(g1_temp)
       print(f'       - Bonded atoms to G1 ({g1.name}) : {[atom.name for atom in g1_temp]}')
@@ -342,11 +351,14 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
     for i in range(len(triads_host_atoms)):
       print(f'       - Triad {i} : {[idx for idx in triads_host_atoms[i]]}')
       print(f'                   {[universe_mda.atoms[idx].name for idx in triads_host_atoms[i]]}')
-    
+
+  print(triads_guest_atoms)
+  print(triads_host_atoms)
   triads_guest_atoms = [t for t in triads_guest_atoms if len(t) == 3]
   triads_host_atoms = [t for t in triads_host_atoms if len(t) == 3]
 
   return triads_guest_atoms, triads_host_atoms
+
 
 def find_triads(universe_mda,hbond_population,mda_guest_candidates_idx,protein_atoms,debug_info):
   #! Step 3: Finding triads of atoms for guest and host !#
@@ -367,9 +379,14 @@ def find_triads(universe_mda,hbond_population,mda_guest_candidates_idx,protein_a
 
     if donor in protein_atoms:
       g0 = acceptor
+      if g0.index+2 not in mda_guest_candidates_idx:
+        g0 = g0.bonds[0].partner(g0)
       hx = donor
+      
     else:
       g0 = donor
+      if g0.index+2 not in mda_guest_candidates_idx:
+        g0 = g0.bonds[0].partner(g0)
       hx = acceptor
 
     triads_guest_atoms, triads_host_atoms = anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx)

@@ -11,7 +11,7 @@ from openfe.protocols.openmm_utils.charge_generation import bulk_assign_partial_
 from sys import stdout
 import numpy as np
 import os, pathlib
-from openmm.app import PDBFile,Modeller,ForceField
+from openmm.app import PDBFile,PDBxFile,Modeller,ForceField
 from pdbfixer import PDBFixer
 
 def tester_for_bad_template(pdb_name:str):
@@ -63,43 +63,79 @@ def preparing_protein_from_PDBank(pdb_name:str,
 
   tester_for_bad_template(pdb_name)
 
-def preparing_ligand_from_PDBank(pdb_name:str,
+
+# import subprocess
+# def protonate_sdf(sdf_path, pH=7.4):
+#     # Load molecule from SDF
+#     mol = Chem.SDMolSupplier(sdf_path, removeHs=True)[0]
+#     Chem.SanitizeMol(mol)
+
+#     # Convert to clean SMILES (NO explicit Hs)
+#     smiles = Chem.MolToSmiles(mol, canonical=True)
+
+#     # Correct CLI call: SMILES is POSITIONAL argument
+#     cmd = [
+#         "dimorphite_dl",
+#         smiles,
+#         "--ph_min", str(pH),
+#         "--ph_max", str(pH),
+#     ]
+
+#     result = subprocess.run(cmd, capture_output=True, text=True)
+
+#     if result.returncode != 0:
+#         raise RuntimeError(
+#             f"Dimorphite failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+#         )
+
+#     # Each line is a protonated SMILES
+#     smiles_list = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+#     # Convert back to RDKit molecules
+#     mols = []
+#     for smi in smiles_list:
+#         m = Chem.MolFromSmiles(smi)
+#         if m is None:
+#             continue
+#         mols.append(m)
+
+#     return mols
+# def write_sdf(mols, out_prefix="lig"):
+#     for i, mol in enumerate(mols):
+#         w = Chem.SDWriter(f"{out_prefix}_{i}.sdf")
+#         Chem.SanitizeMol(mol)
+#         w.write(mol)
+#         w.close()
+
+def preparing_ligand_from_PDBank(sdf_orig_name:str,
                                 lig_resname:str,
                                 protonate:bool):
   
-  print('\nPreparing SDF file of ligand.')
-  pdb = PDBFile(f'{pdb_name}_fixed.pdb')
+  supp = Chem.SDMolSupplier(f'{sdf_orig_name}.sdf', removeHs=False)
+  mol = supp[0]
 
-  print(' - Deleting non-ligand atoms.')
-  modeller = Modeller(pdb.topology, pdb.positions)
-  atoms_to_delete = [
-      atom for atom in modeller.topology.atoms()
-      if atom.residue.name != lig_resname ]
-
-  modeller.delete(atoms_to_delete)
-  print(f'Saving ligand-only PDB as lig_{lig_resname}.pdb')
-  PDBFile.writeFile(modeller.topology, modeller.positions, open(f'lig_{lig_resname}.pdb', 'w'))
-
-  print(f'Opening lig_{lig_resname}.pdb with rdkit.Chem')
-  mol = Chem.MolFromPDBFile(f'lig_{lig_resname}.pdb', removeHs=False)
   if protonate:
     print(' - Protonating ligand.')
-    mol = Chem.AddHs(mol)
+    mol = Chem.AddHs(mol, addCoords=True)
 
   print(f'Saving ligand-only SDF as lig_{lig_resname}.sdf')
   writer = Chem.SDWriter(f'lig_{lig_resname}.sdf')
   writer.write(mol)
   writer.close()
-
+  sdf_path = f'lig_{lig_resname}.sdf'
+  # mols = protonate_sdf(sdf_path, pH=7.4)
+  # write_sdf(mols, out_prefix="lig")
+  print('### If you dont want a NEUTRAL ligand change it manually in the SDF file!!!!\n')
 
   return
 
 def preparing_from_PDBank(pdb_name:str,
                           lig_resname:str,
+                          sdf_orig_name,
                           residues_to_remove:dict,
                           protonate:bool):
-  print('Fixing PDB')
-  fixer = PDBFixer(filename=f'{pdb_name}.pdb')
+  print('\nFixing PDB')
+  fixer = PDBFixer(filename=f'{pdb_name}.cif')
   fixer.findMissingResidues()
   print(fixer.findMissingResidues)
   fixer.findMissingAtoms()
@@ -114,7 +150,7 @@ def preparing_from_PDBank(pdb_name:str,
                                 residues_to_remove,
                                 protonate)
   
-  preparing_ligand_from_PDBank(pdb_name,
+  preparing_ligand_from_PDBank(sdf_orig_name,
                                 lig_resname,
                                 protonate)
   return
@@ -237,7 +273,7 @@ def solvating_system(pdb_name,
   modeller.addSolvent(
     ff,
     model='tip3p',
-    padding=1.0*unit.nanometer,
+    padding=1.5*unit.nanometer,
     ionicStrength = 0.15 * unit.molar
   )
 
