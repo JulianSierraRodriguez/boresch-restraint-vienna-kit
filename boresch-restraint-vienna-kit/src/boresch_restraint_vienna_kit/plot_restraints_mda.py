@@ -111,6 +111,8 @@ def plot_restraints(pdb_name:str,
                     anchors:list,
                     several_simulations:bool,
                     total_simulations:int,
+                    host_idx_corrector:int,
+                    guest_idx_corrector:int,
                     references:bool,
                     figure_name:str):
   fig, axs = plt.subplots(3,2,sharex=True, figsize=(14,10))
@@ -132,47 +134,67 @@ def plot_restraints(pdb_name:str,
 
     #* Remember to add one to what you get from the openfe.log
     #! HOST ATOMS !#
-    h0 = u.select_atoms(f'id {anchors[0]}') # 1549 or 1552
-    h1 = u.select_atoms(f'id {anchors[1]}') # 1547 or 1547
-    h2 = u.select_atoms(f'id {anchors[2]}') # 1527 or 1549
+    h0 = u.select_atoms(f'id {anchors[0] +host_idx_corrector}') 
+    h1 = u.select_atoms(f'id {anchors[1] +host_idx_corrector}') 
+    h2 = u.select_atoms(f'id {anchors[2] +host_idx_corrector}') 
 
     #! GUEST ATOMS !#
-    g0 = u.select_atoms(f'id {anchors[3]}') # 2619 or 2620
-    g1 = u.select_atoms(f'id {anchors[4]}') # 2618 or 2619
-    g2 = u.select_atoms(f'id {anchors[5]}') # 2617 or 2617
+    g0 = u.select_atoms(f'id {anchors[3] +guest_idx_corrector}') 
+    g1 = u.select_atoms(f'id {anchors[4] +guest_idx_corrector}') 
+    g2 = u.select_atoms(f'id {anchors[5] +guest_idx_corrector}') 
+
+    atoms = [h0, h1, h2, g0, g1, g2]
+    names = [a[0].name for a in atoms]
+    idx = [anchors[i] + (host_idx_corrector if i < 3 else guest_idx_corrector) for i in range(len(anchors))]
+    print('\nCheck that your atoms are correct, if not change the correctors in the functions: ')
+    print('indexes may be different by some numbers, trust the atom name. \n')
+    print(idx)
+    print(names)
 
     #! Computing Parameters !#
+    print('\n - Computing Parameters.')
     n_frames = len(u.trajectory[::step])
+    
+    print('   - Computing distance r_aA.')
     r_A = np.zeros(n_frames)
     r_A = obtain_bonds(r_A, u, h0, g0, step)
 
+    print('   - Computing angle theta_A.')
     theta_A = np.zeros(n_frames)
     theta_A = obtain_angles(theta_A, u, h1, h0, g0, step)
     theta_A = np.degrees(theta_A)
 
+    print('   - Computing angle theta_B.')
     theta_B = np.zeros(n_frames)
     theta_B = obtain_angles(theta_B, u, h0, g0, g1, step)
     theta_B = np.degrees(theta_B)
 
+    print('   - Computing angle phi_A.')
     phi_A = np.zeros(n_frames)
     phi_A = obtain_dihedrals(phi_A, u, h2, h1, h0, g0, step)
+    phi_A = np.unwrap(phi_A)
+
     phi_A = np.degrees(phi_A)
 
     # phi_A = center_dihedral(phi_A)
 
+    print('   - Computing angle phi_B.')
     phi_B = np.zeros(n_frames)
     phi_B = obtain_dihedrals(phi_B, u, h1, h0, g0, g1, step)
+    phi_B = np.unwrap(phi_B)
     phi_B = np.degrees(phi_B)
 
     # phi_B = center_dihedral(phi_B)
 
+    print('   - Computing angle phi_B.')
     phi_C = np.zeros(n_frames)
     phi_C = obtain_dihedrals(phi_C, u, h0, g0, g1, g2, step)
+    phi_C = np.unwrap(phi_C)
     phi_C = np.degrees(phi_C)
 
     # phi_C = center_dihedral(phi_C)
 
-
+    print('\n - Plotting.')
     plot_iter(fig, axs,r_A,theta_A,theta_B,phi_A,phi_B,phi_C,color=colors[i],label=f'rep_{i}')
     if several_simulations:
       os.chdir('..')

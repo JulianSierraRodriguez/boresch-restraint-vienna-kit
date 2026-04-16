@@ -53,8 +53,10 @@ plot_restraints(pdb_name = ref_pdb,
                 anchors = anchors,
                 several_simulations = False,
                 total_simulations = 1,
+                host_idx_corrector = 1,
+                guest_idx_corrector = 2,
                 references=False,
-                figure_name = 'p23_2f_W')
+                figure_name = 'p38_2f_W')
 
 
 print('\n END of SCRIPT \n')
