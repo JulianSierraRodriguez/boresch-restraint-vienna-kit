@@ -208,71 +208,75 @@ def hbond_filter2(n_frames,step_hbond,universe_mda,population_hbond,host_guest_h
 
   return hbond_population
 
-def hbond_filter3(universe_mda,hbond_population,debug_info):
-  #* H-bond Filter 3:  Filtering H-bonds of C-H*#
+def hbond_filter3(universe_mda,hbond_population,ligand_atoms, protein_atoms,debug_info):
+  #* H-bond Filter 3:  Filtering H-bonds of where the acceptor or donnor is not N, O, F, S, Cl.*#
 
-  print(f'\nFilter 3: Removing H-bonds where the acceptor or donor atom is a C.')
+  print(f'\nFilter 3: Removing H-bonds where the acceptor or donnor is not in accepted Hbond atoms.')
   keys_to_rm = []
 
+  accepted_hbonds = ['N','O','F','S','Cl']
+  print('\nThe accepted Hbond atoms are:', ', '.join(accepted_hbonds))
   for hb in hbond_population:
     print(f'\n - {hb}')
     donor_idx = hbond_population[hb]['donor_idx']
     acceptor_idx = hbond_population[hb]['acceptor_idx']
 
     donor = universe_mda.select_atoms(f'index {donor_idx}')[0]
-    print('   - Donor is:',donor.element)
     acceptor = universe_mda.select_atoms(f'index {acceptor_idx}')[0]
-    print('   - Acceptor is:',acceptor.element)
 
-    removed = False # to break the loop for the H-bond if it is already removed for any reason.
+    removed = False
+
     if donor.element == 'H':
-      neighbours = universe_mda.select_atoms(f"(around 2.0 index {donor.index} )and (resname {donor.resname} and resid {donor.resid})")# and protein")
+      bonded_to_H = donor.bonds[0].partner(donor)
+      if bonded_to_H.element in accepted_hbonds:
+        print(f'   - Updating donor from {donor.name} to {bonded_to_H.name}')
+        donor = bonded_to_H
+      else:
+        keys_to_rm.append(hb)
+        print(f'  - Donor {donor.name} and bonded {bonded_to_H.name} are not in the accepted hbond atoms.')
+        removed = True
 
-      for n in neighbours:
-        if 'C' in n.name:
-          print(f'   - Removing {hb} because of C-H bond.')
-          keys_to_rm.append(hb)
-          removed = True
-          break
-        else:
-          hbond_population[hb]['donor_idx'] = int(n.index)
-          hbond_population[hb]['donor'] = f'{n.resname}{n.resid}-{n.name}'
-          break
-
-    elif donor.element == 'C' and not removed:
-      print(f'   - Removing {hb} because donor is a C.')
-      keys_to_rm.append(hb)
-      removed = True
 
     if acceptor.element == 'H' and not removed:
-      neighbours = universe_mda.select_atoms(f"(around 2.0 index {acceptor.index} )and (resname {acceptor.resname} and resid {acceptor.resid})")# and protein")
+      bonded_to_H = acceptor.bonds[0].partner(acceptor)
+      if bonded_to_H.element in accepted_hbonds:
+        print(f'   - Updating acceptor from {acceptor.name} to {bonded_to_H.name}')
+        acceptor = bonded_to_H
+      else:
+        keys_to_rm.append(hb)
+        print(f'   - Acceptor {acceptor.name} and bonded {bonded_to_H.name} are not in the accepted hbond atoms.')
+        removed = True
 
-      for n in neighbours:
-        if 'C' in n.name:
-          print(f'   - Removing {hb} because of C-H bond.')
-          keys_to_rm.append(hb)
-          removed = True
-          break
-        else:
-          hbond_population[hb]['acceptor_idx'] = int(n.index)
-          hbond_population[hb]['acceptor'] = f'{n.resname}{n.resid}-{n.name}'
-          break
-
-    elif acceptor.element == 'C' and not removed:
-      print(f'   - Removing {hb} because acceptor is a C.')
+    if donor.element not in accepted_hbonds and not removed:
       keys_to_rm.append(hb)
+      print(f'   - Donor {donor.name} is not in accepted hbond atoms.')
+      removed = True
+    if acceptor.element not in accepted_hbonds and not removed:
+      keys_to_rm.append(hb)
+      print(f'   - Acceptor {acceptor.name} is not in accepted hbond atoms.')
+      removed = True
 
-  print(f'\n - Removing {len(keys_to_rm)}/{len(hbond_population)} H-bonds, C is the acceptor or donor atom.')
+    if not removed:
+      if donor in ligand_atoms:
+        print('   - Acceptor is:',acceptor.name,f'({acceptor.index+1})')
+        print('   - Donor is:',donor.name,f'({donor.index+2})')
+      else:
+        print('   - Acceptor is:',acceptor.name,f'({acceptor.index+2})')
+        print('   - Donor is:',donor.name,f'({donor.index+1})')
+
+  print(f'\n - Removing {len(keys_to_rm)}/{len(hbond_population)} H-bonds, acceptor or donor atom is not hbond accepted atom.')
 
   for key in keys_to_rm:
     hbond_population.pop(key, 'None')
 
   if debug_info:
     # Print to see the dictionary of the full unique hbonds before filtering by population.
-    print('\nH-bonds without a C as an acceptor or donor atom:')
+    print('\nH-bonds without an acceptor or donor atom as hbond accepted atom:')
     console.print(Pretty(hbond_population))
 
+
   return hbond_population
+
 
 def hbond_search(universe_mda, guest_resname, ligand_atoms, step_hbond, population_hbond, d_DH_cutoff, d_AH_cutoff, debug_info):
   #! Step 2: H-bond !#
@@ -299,7 +303,7 @@ def hbond_search(universe_mda, guest_resname, ligand_atoms, step_hbond, populati
 
   hbond_population = hbond_filter2(n_frames,step_hbond,universe_mda,population_hbond,host_guest_hbonds,debug_info)
 
-  hbond_population = hbond_filter3(universe_mda,hbond_population,debug_info)
+  hbond_population = hbond_filter3(universe_mda,hbond_population,ligand_atoms, protein_atoms,debug_info)
 
   return hbond_population, protein_atoms
 
@@ -359,7 +363,6 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
 
   return triads_guest_atoms, triads_host_atoms
 
-
 def find_triads(universe_mda,hbond_population,mda_guest_candidates_idx,protein_atoms,debug_info):
   #! Step 3: Finding triads of atoms for guest and host !#
 
@@ -375,12 +378,17 @@ def find_triads(universe_mda,hbond_population,mda_guest_candidates_idx,protein_a
     print(f'\n - Looking anchors using H-bond "{hb}".')
 
     donor = universe_mda.select_atoms(f'index {hbond_population[hb]['donor_idx']}')[0]
+    print(f'index {hbond_population[hb]['donor_idx']}')
+
     acceptor = universe_mda.select_atoms(f'index {hbond_population[hb]['acceptor_idx']}')[0]
+    print(f'index {hbond_population[hb]['acceptor_idx']}')
+    quit()
 
     if donor in protein_atoms:
       g0 = acceptor
       if g0.index+2 not in mda_guest_candidates_idx:
         g0 = g0.bonds[0].partner(g0)
+
       hx = donor
       
     else:
