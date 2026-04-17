@@ -277,7 +277,6 @@ def hbond_filter3(universe_mda,hbond_population,ligand_atoms, protein_atoms,debu
 
   return hbond_population
 
-
 def hbond_search(universe_mda, guest_resname, ligand_atoms, step_hbond, population_hbond, d_DH_cutoff, d_AH_cutoff, debug_info):
   #! Step 2: H-bond !#
 
@@ -338,7 +337,7 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
       bonded_to_g1 = bondeds_g1[i]
       print(f'\n     - Found Triads of guest atoms for G0 ({g0.name}) and G1 ({g1.name})')
       for j in range(len(bonded_to_g1)):
-        triad = [int(g0.index), int(g1.index), int(bonded_to_g1[j].index)]
+        triad = [int(g0.index), int(g1.index), int(bonded_to_g1[j].index)]  #indexes are the good ones when we call the names, DONT TOUCH
         triads_guest_atoms.append(triad)
         print(f'       - Triad {j} : {[idx for idx in triad]}')
         print(f'                   {[universe_mda.atoms[idx].name for idx in triad]}')
@@ -356,8 +355,6 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
       print(f'       - Triad {i} : {[idx for idx in triads_host_atoms[i]]}')
       print(f'                   {[universe_mda.atoms[idx].name for idx in triads_host_atoms[i]]}')
 
-  print(triads_guest_atoms)
-  print(triads_host_atoms)
   triads_guest_atoms = [t for t in triads_guest_atoms if len(t) == 3]
   triads_host_atoms = [t for t in triads_host_atoms if len(t) == 3]
 
@@ -378,17 +375,12 @@ def find_triads(universe_mda,hbond_population,mda_guest_candidates_idx,protein_a
     print(f'\n - Looking anchors using H-bond "{hb}".')
 
     donor = universe_mda.select_atoms(f'index {hbond_population[hb]['donor_idx']}')[0]
-    print(f'index {hbond_population[hb]['donor_idx']}')
-
     acceptor = universe_mda.select_atoms(f'index {hbond_population[hb]['acceptor_idx']}')[0]
-    print(f'index {hbond_population[hb]['acceptor_idx']}')
-    quit()
 
     if donor in protein_atoms:
       g0 = acceptor
       if g0.index+2 not in mda_guest_candidates_idx:
         g0 = g0.bonds[0].partner(g0)
-
       hx = donor
       
     else:
