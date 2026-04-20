@@ -480,7 +480,7 @@ def check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,d
     if not removed:
       print('   - Keeping this set of candidates\n')
 
-  print(f' - Removing {len(idx_to_remove)}/{len(unique_candidates_restraints)} sets of candidates, angles out of range.')
+  print(f' - Removing {len(idx_to_remove)}/{len(unique_candidates_restraints)} sets of candidates, angles out of range [{min_angle},{max_angle}].')
 
   for idx in sorted(idx_to_remove, reverse=True):
     unique_candidates_restraints.pop(idx)
@@ -666,8 +666,15 @@ def restraint_search_william(guest_sdf_name:str,
   hbond_population, protein_atoms = hbond_search(universe_mda, guest_resname, ligand_atoms, step_hbond, population_hbond, d_DH_cutoff, d_AH_cutoff, debug_info)
 
   unique_candidates_restraints = find_triads(universe_mda,hbond_population,mda_guest_candidates_idx,protein_atoms,debug_info)
+  
+  while unique_candidates_restraints == [] or unique_candidates_restraints == None:
 
-  unique_candidates_restraints = check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,debug_info)
+    unique_candidates_restraints = check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,debug_info)
+
+    if unique_candidates_restraints == [] or unique_candidates_restraints == None:
+      print(f'\n\nWARNING!!! Angle filter [{min_angle},{max_angle}] was too restrictive, increasing 5 degrees to each limit -> [{min_angle-5},{max_angle+5}]')
+      min_angle -= 5
+      max_angle += 5
 
   final_candidates = check_distance_guest_COM(universe_mda,unique_candidates_restraints,ligand_atoms,debug_info)
 
