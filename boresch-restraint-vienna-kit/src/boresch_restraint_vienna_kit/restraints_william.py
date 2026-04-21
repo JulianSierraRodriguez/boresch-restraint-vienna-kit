@@ -6,6 +6,7 @@ Procedure obtained from Zhiyi Wu et al. (J. Chem. Theory Comput. (2025)) and cod
 import numpy as np
 from rdkit import Chem
 import MDAnalysis as mda
+from MDAnalysis import transformations as trans
 from MDAnalysis.analysis.hydrogenbonds import HydrogenBondAnalysis
 from MDAnalysis.lib.distances import calc_bonds, calc_angles, calc_dihedrals
 from rich.pretty import Pretty
@@ -70,23 +71,32 @@ def setting_up_mda(pdb_name,traj_name,guest_resname,guest_candidates_ids):
 
   #* Setting up the MDAnalysis universe*#
 
-  u = mda.Universe(
+  universe_mda = mda.Universe(
     pdb_name,
     traj_name
   )
 
-  u.atoms.guess_bonds(
+  universe_mda.atoms.guess_bonds(
     vdwradii={'Na' : 0,
               'Cl' : 0,
               'Br': 1.85}
   )
+
+  protein = universe_mda.select_atoms("protein")
+  transformations = [
+    trans.unwrap(universe_mda.atoms),  # unwrap molecules across PBC (optional, can be removed)
+    trans.center_in_box(protein),  # center protein
+    trans.wrap(universe_mda.atoms),    # wrap back into box (optional, can be removed)
+  ]
+  print('Applying transformations')
+  universe_mda.trajectory.add_transformations(*transformations)
 
   #* Coverting guest candidate list to MDA indexes*#
 
   mda_guest_candidates = []
   # mda_guest_candidates_elem = []
   mda_guest_candidates_idx = []
-  ligand_atoms = u.select_atoms(f'resname {guest_resname}')
+  ligand_atoms = universe_mda.select_atoms(f'resname {guest_resname}')
   for i in guest_candidates_ids:
     atom = ligand_atoms[i]
     mda_guest_candidates.append(atom)
@@ -98,11 +108,11 @@ def setting_up_mda(pdb_name,traj_name,guest_resname,guest_candidates_ids):
   print('\nIndexes of the guest\'s candidate atoms (full system):')
   print(mda_guest_candidates_idx,'\n')
   mda_guest_candidates_names = [
-      u.atoms[i-2].name
+      universe_mda.atoms[i-2].name
       for i in mda_guest_candidates_idx
   ]  
   print(mda_guest_candidates_names)
-  return mda_guest_candidates_idx, u, ligand_atoms
+  return mda_guest_candidates_idx, universe_mda, ligand_atoms
 
 def hbond_filter1(universe_mda,ligand_atoms, hbonds, debug_info):
   #* H-bond Filter 1: Generating array where the donnor or acceptor atom is in the guest. *#
