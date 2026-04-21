@@ -33,7 +33,7 @@ def preparing_protein_from_PDBank(pdb_name:str,
 
   Args:
       pdb_name (str): original pdb name from the beginning. It adds the '_fixed.pdb' inside.
-      residues_to_remove (dict): residues that we want remove that are not from the protein, such as cofactors ions or ligands. No need to put the waters.
+      residues_to_remove (dict): residues that will be remove that are not from the protein, such as cofactors ions or ligands. No need to put the waters.
       protonate (bool): True if the protein needs to be protonated.
   """  
   print('Preparing Protein-only PDB:')
@@ -78,7 +78,13 @@ def preparing_protein_from_PDBank(pdb_name:str,
 def preparing_ligand_from_PDBank(sdf_orig_name:str,
                                 lig_resname:str,
                                 protonate:bool):
-  
+  """Prepares the ligand from a file obtained from the Protein Data Bank. It is important to check that the SDF downloaded from the Protein Data Bank is in the same coordinates than the ligand is in the PDB file. If not the protein will be elsewhere.
+
+  Args:
+      sdf_orig_name (str): sdf filename of the ligand without the extension '.sdf'
+      lig_resname (str): resname of the ligand.
+      protonate (bool): True if the ligand needs to be protonated. It does not check pH all atoms will be in their neutral states.
+  """  
   supp = Chem.SDMolSupplier(f'{sdf_orig_name}.sdf', removeHs=False)
   mol = supp[0]
 
@@ -91,8 +97,6 @@ def preparing_ligand_from_PDBank(sdf_orig_name:str,
   writer.write(mol)
   writer.close()
   sdf_path = f'lig_{lig_resname}.sdf'
-  # mols = protonate_sdf(sdf_path, pH=7.4)
-  # write_sdf(mols, out_prefix="lig")
   print('### If you dont want a NEUTRAL ligand change it manually in the SDF file!!!!\n')
 
   return
@@ -102,6 +106,15 @@ def preparing_from_PDBank(pdb_name:str,
                           sdf_orig_name,
                           residues_to_remove:dict,
                           protonate:bool):
+  """Prepares system obtained from the Protein Data Bank, we need the CIF of the system and the SDF of the ligand.
+
+  Args:
+      pdb_name (str): name of the CIF file without the extension '.cif'.
+      lig_resname (str): resname of the ligand.
+      sdf_orig_name (_type_): sdf filename of the ligand without the extension '.sdf'
+      residues_to_remove (dict): residues that will be remove that are not from the protein, such as cofactors ions or ligands. No need to put the waters.
+      protonate (bool): True if the system needs to be protonated. Usually the case if comes from XRAY spectroscopy.
+  """  
   print('\nFixing PDB')
   fixer = PDBFixer(filename=f'{pdb_name}.cif')
   fixer.findMissingResidues()
@@ -124,6 +137,14 @@ def preparing_from_PDBank(pdb_name:str,
   return
 
 def preparing_ligand(molecule_name:str):
+  """Prepares the ligand for the simulation, assigning the partial charges to the atoms, to have a forcefield of the ligand.
+
+  Args:
+      molecule_name (str): name of the ligand sdf file, don't put the '.sdf' extension. 
+
+  Returns:
+      The parameters and the ligand to be used by OpenMM.
+  """  
   #! Getting Ligand !#
   supp = Chem.SDMolSupplier(f'{molecule_name}.sdf', removeHs=False)
   orig_rdkit = supp[0]
@@ -150,63 +171,87 @@ def system_solvated_PDB(pdb_name:str,
                         forcefield:list = ['amber/ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml', 'amber/phosaa10.xml'],
                         forcefield_small_molecule:str = 'openff-2.2.1' 
                         ):
+  """Does the preparation of a system that has already been solvated. It assigns the cell dimensions for the PBC.
+
+  Args:
+      pdb_name (str): filename of the PDB with the solvated system.
+      orig_rdkit (_type_): information of the ligand produced by the preparing function above.
+      forcefield (list, optional): list of forcefields to be used. Defaults to ['amber/ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml', 'amber/phosaa10.xml'].
+      forcefield_small_molecule (str, optional): forcefield to be used for the ligand. Defaults to 'openff-2.2.1'.
+
+  Returns:
+      system, topology, positions to be used for the simulation.
+  """    
   #! We will use the coordinates from the PDB !#
 
-    pdb = app.PDBFile(pdb_name)
-    positions = pdb.positions
-    topology = pdb.topology
+  pdb = app.PDBFile(pdb_name)
+  positions = pdb.positions
+  topology = pdb.topology
 
-    off_mol = Molecule.from_rdkit(orig_rdkit, allow_undefined_stereo=True)
+  off_mol = Molecule.from_rdkit(orig_rdkit, allow_undefined_stereo=True)
 
-    modeller = app.Modeller(topology, positions)
+  modeller = app.Modeller(topology, positions)
 
-    #? We are using a PDB that was generated with OpenFE, the minimized.pdb, then we need to generate the Periodic Box. 
+  #? We are using a PDB that was generated with OpenFE, the minimized.pdb, then we need to generate the Periodic Box. 
 
-    # We obtain the positions of all atoms.
-    coords = np.array([[x.value_in_unit(unit.nanometer),
+  # We obtain the positions of all atoms.
+  coords = np.array([[x.value_in_unit(unit.nanometer),
                         y.value_in_unit(unit.nanometer),
                         z.value_in_unit(unit.nanometer)] for x,y,z in positions])
 
-    # From all positions we get the minimum/maximum coordinates between all the positions.
-    min_coords = coords.min(axis=0)
-    max_coords = coords.max(axis=0)
+  # From all positions we get the minimum/maximum coordinates between all the positions.
+  min_coords = coords.min(axis=0)
+  max_coords = coords.max(axis=0)
 
-    # It is good to add some padding, if it is too much during the equilibration of density (NPT) the box will decrease its volume.
+  # It is good to add some padding, if it is too much during the equilibration of density (NPT) the box will decrease its volume.
 
-    box_lengths = max_coords - min_coords + 3.0  # add 2 nm padding
+  box_lengths = max_coords - min_coords + 3.0  # add 2 nm padding
 
-    modeller.topology.setUnitCellDimensions(unit.Quantity(box_lengths, unit.nanometer))
-    modeller.positions = positions
+  modeller.topology.setUnitCellDimensions(unit.Quantity(box_lengths, unit.nanometer))
+  modeller.positions = positions
 
-    system_generator = SystemGenerator(
-      forcefields=forcefield,
-      small_molecule_forcefield=forcefield_small_molecule,
-      molecules=[off_mol],
-      periodic_forcefield_kwargs={
-        'nonbondedMethod': app.PME,
-        'nonbondedCutoff': 0.9*unit.nanometer,
-        'constraints': app.HBonds,
-        'rigidWater': True,
-        'hydrogen_mass' :3.0 * unit.amu
-      },
-    )
-    #* Adding the Periodic Box Vectors obtained previously to have periodicity. *#
+  system_generator = SystemGenerator(
+    forcefields=forcefield,
+    small_molecule_forcefield=forcefield_small_molecule,
+    molecules=[off_mol],
+    periodic_forcefield_kwargs={
+      'nonbondedMethod': app.PME,
+      'nonbondedCutoff': 0.9*unit.nanometer,
+      'constraints': app.HBonds,
+      'rigidWater': True,
+      'hydrogen_mass' :3.0 * unit.amu
+    },
+  )
+  #* Adding the Periodic Box Vectors obtained previously to have periodicity. *#
 
-    system = system_generator.create_system(modeller.topology)
-    system.setDefaultPeriodicBoxVectors(
-      Vec3(box_lengths[0], 0, 0),
-      Vec3(0, box_lengths[1], 0),
-      Vec3(0, 0, box_lengths[2])
-    )
-    return system, topology, positions
+  system = system_generator.create_system(modeller.topology)
+  system.setDefaultPeriodicBoxVectors(
+    Vec3(box_lengths[0], 0, 0),
+    Vec3(0, box_lengths[1], 0),
+    Vec3(0, 0, box_lengths[2])
+  )
+  return system, topology, positions
 
-def solvating_system(pdb_name,
+def solvating_system(pdb_name:str,
                      ligands,
                      forcefield:list = ['amber/ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml', 'amber/phosaa10.xml'],
                      forcefield_small_molecule:str = 'openff-2.2.1',
                      protein_ligand_pdb = 'protein_ligand_system.pdb',
                      solvated_pdb = 'solvated_system.pdb',
 ):
+  """Solvates a system where we only have the protein and the ligand.
+
+  Args:
+      pdb_name (str): filename of the PDB with the protein.
+      ligands : we get this parameter from the preparing_ligand function.
+      forcefield (list, optional): list of forcefields to be used. Defaults to ['amber/ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml', 'amber/phosaa10.xml'].
+      forcefield_small_molecule (str, optional): forcefield to be used for the ligand. Defaults to 'openff-2.2.1'.
+      protein_ligand_pdb (str, optional): name of the PDB to be written of the ligand and protein. Defaults to 'protein_ligand_system.pdb'.
+      solvated_pdb (str, optional): name of the PDB to be written of the solvated system. Defaults to 'solvated_system.pdb'.
+
+  Returns:
+      system, topology, positions for the OpenMM simulation
+  """  
   protein = app.PDBFile(pdb_name)
 
   off_mol = ligands[0].to_openff()
