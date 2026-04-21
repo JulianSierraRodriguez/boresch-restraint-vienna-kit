@@ -20,6 +20,14 @@ supp = Chem.SDMolSupplier(f'lig_{lig_resname}.sdf', removeHs=False)
 mol = supp[0]
 
 def deprotonate_carboxylic_acids(mol):
+    """Deprotonates the carboxylic acids in the molecule. Needed for this molecule 024 from the 2QBS pdb (PTP1B).
+
+    Args:
+        mol (_type_): rdkit molecule.
+
+    Returns:
+        rdkit molecule with the carboxylic acids deprotonated.
+    """
     rw = Chem.RWMol(mol)
     
     # SMARTS: carboxylic acid

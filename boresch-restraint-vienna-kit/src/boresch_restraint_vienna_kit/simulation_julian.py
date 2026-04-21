@@ -11,10 +11,15 @@ from openfe.protocols.openmm_utils.charge_generation import bulk_assign_partial_
 from sys import stdout
 import numpy as np
 import os, pathlib
-from openmm.app import PDBFile,PDBxFile,Modeller,ForceField
+from openmm.app import PDBFile,Modeller,ForceField
 from pdbfixer import PDBFixer
 
 def tester_for_bad_template(pdb_name:str):
+  """ Tests the inputed PDB for OpenMM template errors.
+
+  Args:
+      pdb_name (str): name of the PDB, it puts the '_CLEAN.pdb' already from the workflow.
+  """  
   print('Testing protein for bad template OpenMM error.')
   pdb = PDBFile(f'{pdb_name}_CLEAN.pdb')
   ff = ForceField('amber14/protein.ff14SB.xml')
@@ -24,6 +29,13 @@ def tester_for_bad_template(pdb_name:str):
 def preparing_protein_from_PDBank(pdb_name:str,
                                   residues_to_remove:dict,
                                   protonate:bool):
+  """Prepares the protein from a file obtained from the Protein Data Bank.
+
+  Args:
+      pdb_name (str): original pdb name from the beginning. It adds the '_fixed.pdb' inside.
+      residues_to_remove (dict): residues that we want remove that are not from the protein, such as cofactors ions or ligands. No need to put the waters.
+      protonate (bool): True if the protein needs to be protonated.
+  """  
   print('Preparing Protein-only PDB:')
   pdb = PDBFile(f'{pdb_name}_fixed.pdb')
 
@@ -62,50 +74,6 @@ def preparing_protein_from_PDBank(pdb_name:str,
   PDBFile.writeFile(modeller.topology, modeller.positions, open(f'{pdb_name}_CLEAN.pdb', 'w'))
 
   tester_for_bad_template(pdb_name)
-
-
-# import subprocess
-# def protonate_sdf(sdf_path, pH=7.4):
-#     # Load molecule from SDF
-#     mol = Chem.SDMolSupplier(sdf_path, removeHs=True)[0]
-#     Chem.SanitizeMol(mol)
-
-#     # Convert to clean SMILES (NO explicit Hs)
-#     smiles = Chem.MolToSmiles(mol, canonical=True)
-
-#     # Correct CLI call: SMILES is POSITIONAL argument
-#     cmd = [
-#         "dimorphite_dl",
-#         smiles,
-#         "--ph_min", str(pH),
-#         "--ph_max", str(pH),
-#     ]
-
-#     result = subprocess.run(cmd, capture_output=True, text=True)
-
-#     if result.returncode != 0:
-#         raise RuntimeError(
-#             f"Dimorphite failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
-#         )
-
-#     # Each line is a protonated SMILES
-#     smiles_list = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-
-#     # Convert back to RDKit molecules
-#     mols = []
-#     for smi in smiles_list:
-#         m = Chem.MolFromSmiles(smi)
-#         if m is None:
-#             continue
-#         mols.append(m)
-
-#     return mols
-# def write_sdf(mols, out_prefix="lig"):
-#     for i, mol in enumerate(mols):
-#         w = Chem.SDWriter(f"{out_prefix}_{i}.sdf")
-#         Chem.SanitizeMol(mol)
-#         w.write(mol)
-#         w.close()
 
 def preparing_ligand_from_PDBank(sdf_orig_name:str,
                                 lig_resname:str,
