@@ -437,8 +437,7 @@ def check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,d
   #! Step 4: Checking angles !#
 
   print('\n 4. Filtering possible anchors by their angle. \n ')
-  print('\n - We will compute theta_A (H1-H0-G0) and theta_B (H0-G0-G1) and check if they are')
-  print(f'   in the range [{min_angle}º-{max_angle}º]\n')
+  print(f'\n - We will compute theta_A (H1-H0-G0) and theta_B (H0-G0-G1) and check if they are in the range [{min_angle}º-{max_angle}º]\n')
 
   idx_to_remove = []
   for i in range(len(unique_candidates_restraints)):
@@ -450,8 +449,8 @@ def check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,d
     removed = False
 
     print('\n   - Checking angles of the first frame.')
-    if not (45 <= theta_A <= 135) or not (45 <= theta_B <= 135):
-      print('     - Not keeping this set of candidates. First frame\'s theta_A or theta_B is out of [45º,135º].')
+    if not (min_angle <= theta_A <= max_angle) or not (min_angle <= theta_B <= max_angle):
+      print(f'     - Not keeping this set of candidates. First frame\'s theta_A or theta_B is out of [{min_angle}º,{max_angle}º].')
       print(f'       theta_A = {theta_A} º // theta_B = {theta_B} º\n')
 
       idx_to_remove.append(i)
@@ -472,8 +471,8 @@ def check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,d
         if debug_info:
           print(ts.frame, theta_A, theta_B)
 
-        if not (45 <= theta_A <= 135) or not (45 <= theta_B <= 135):
-          print('     - Not keeping this set of candidates. theta_A or theta_B is out of [45º,135º] during he simulation.')
+        if not (min_angle <= theta_A <= max_angle) or not (min_angle <= theta_B <= max_angle):
+          print(f'     - Not keeping this set of candidates. theta_A or theta_B is out of [{min_angle}º,{max_angle}º] during he simulation.')
           print(f'       theta_A = {theta_A} º // theta_B = {theta_B} º \n')
           idx_to_remove.append(i)
           removed = True
@@ -482,14 +481,16 @@ def check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,d
 
   print(f' - Removing {len(idx_to_remove)}/{len(unique_candidates_restraints)} sets of candidates, angles out of range [{min_angle},{max_angle}].')
 
+  unique_candidates_restraints_angles = unique_candidates_restraints.copy()
+
   for idx in sorted(idx_to_remove, reverse=True):
-    unique_candidates_restraints.pop(idx)
+    unique_candidates_restraints_angles.pop(idx)
 
   if debug_info:
     print('\nSets of restraints after filtering angles out of range:')
-    console.print(Pretty(unique_candidates_restraints))
+    console.print(Pretty(unique_candidates_restraints_angles))
   
-  return unique_candidates_restraints
+  return unique_candidates_restraints_angles
 
 def check_distance_guest_COM(universe_mda,unique_candidates_restraints,ligand_atoms,debug_info):
   #! Step 5:  Selecting the ones with the closest G0 to the COM of the ligand !#
@@ -667,16 +668,22 @@ def restraint_search_william(guest_sdf_name:str,
 
   unique_candidates_restraints = find_triads(universe_mda,hbond_population,mda_guest_candidates_idx,protein_atoms,debug_info)
   
-  while unique_candidates_restraints == [] or unique_candidates_restraints == None:
+  unique_candidates_restraints_angles = None
 
-    unique_candidates_restraints = check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,debug_info)
+  original_candidates = unique_candidates_restraints.copy()
 
-    if unique_candidates_restraints == [] or unique_candidates_restraints == None:
+  while unique_candidates_restraints_angles is None or len(unique_candidates_restraints_angles) == 0:
+
+    unique_candidates_restraints_angles = check_angles(universe_mda,min_angle,max_angle,original_candidates,debug_info)
+
+    if unique_candidates_restraints_angles is None or len(unique_candidates_restraints_angles) == 0:
       print(f'\n\nWARNING!!! Angle filter [{min_angle},{max_angle}] was too restrictive, increasing 5 degrees to each limit -> [{min_angle-5},{max_angle+5}]')
-      min_angle -= 5
-      max_angle += 5
+      if min_angle != 0:
+        min_angle -= 5
+      if max_angle != 360:
+        max_angle += 5
 
-  final_candidates = check_distance_guest_COM(universe_mda,unique_candidates_restraints,ligand_atoms,debug_info)
+  final_candidates = check_distance_guest_COM(universe_mda,unique_candidates_restraints_angles,ligand_atoms,debug_info)
 
   anchors,last_frame_vars = scoring_candidates(universe_mda,final_candidates)
   return anchors,universe_mda,last_frame_vars
