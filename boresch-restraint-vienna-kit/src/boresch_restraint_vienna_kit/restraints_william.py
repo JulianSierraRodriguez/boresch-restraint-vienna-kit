@@ -20,7 +20,16 @@ console = Console(width=200)
 
 #? core functions
 
-def find_guest_candidates(guest_sdf_name,debug_info):
+def find_guest_candidates(guest_sdf_name:str,debug_info:bool):
+  """Looks for Guest atom candidates, these atom candidates must be attached to at least two other atoms that are not hydrogens.
+
+  Args:
+      guest_sdf_name (str): SDF file of the guest/ligand, with '.sdf' extension.
+      debug_info (bool): True if Debug information is needed.
+
+  Returns:
+      guest_candidates_ids, list of atom indexes of the candidates from the guest.
+  """  
   #! Step 1: Finding Guest candidates !#
 
   print('\n 1. Looking for guest anchor candidates.\n')
@@ -66,7 +75,18 @@ def find_guest_candidates(guest_sdf_name,debug_info):
   print(guest_candidates_ids,'\n')
   return guest_candidates_ids
 
-def setting_up_mda(pdb_name,traj_name,guest_resname,guest_candidates_ids):
+def setting_up_mda(pdb_name:str,traj_name:str,guest_resname:str,guest_candidates_ids:list):
+  """Sets up the MDAnalysis universe and applies some transformations to center the host/protein to have no problem with the PBC.
+
+  Args:
+      pdb_name (str): PDB file of the system, with '.pdb' extension or topology file.
+      traj_name (str): trajectory file, with extension.
+      guest_resname (str): resname of the guest.
+      guest_candidates_ids (list): list of atom indexes of the candidates from the guest. These indexes are of the ligand on it's own.
+
+  Returns:
+      mda_guest_candidates_idx, guest candidates atom indexes, indexing the full system; universe_mda, MDAnalysis universe; ligand_atoms, list of the atom of the guest made by selecting atoms from the mda_universe.
+  """  
   #! MDAnalysis set up !#
 
   #* Setting up the MDAnalysis universe*#
@@ -94,17 +114,13 @@ def setting_up_mda(pdb_name,traj_name,guest_resname,guest_candidates_ids):
   #* Coverting guest candidate list to MDA indexes*#
 
   mda_guest_candidates = []
-  # mda_guest_candidates_elem = []
   mda_guest_candidates_idx = []
   ligand_atoms = universe_mda.select_atoms(f'resname {guest_resname}')
   for i in guest_candidates_ids:
     atom = ligand_atoms[i]
     mda_guest_candidates.append(atom)
-    # mda_guest_candidates_elem.append(atom.element)
     mda_guest_candidates_idx.append(int(atom.index))
   
-  
-
   print('\nIndexes of the guest\'s candidate atoms (full system):')
   print(mda_guest_candidates_idx,'\n')
   mda_guest_candidates_names = [
@@ -114,10 +130,22 @@ def setting_up_mda(pdb_name,traj_name,guest_resname,guest_candidates_ids):
   print(mda_guest_candidates_names)
   return mda_guest_candidates_idx, universe_mda, ligand_atoms
 
-def hbond_filter1(universe_mda,ligand_atoms, hbonds, debug_info):
-  #* H-bond Filter 1: Generating array where the donnor or acceptor atom is in the guest. *#
+def hbond_filter1(universe_mda,ligand_atoms:list, hbonds, debug_info:bool):
+  """First filter for the Hbonds, one of the atoms involved in the Hbond must be in the ligand and the other on the protein.
 
-  print(f'\nFilter 1: donnor or acceptor atom must be in the guest.')
+  Args:
+      universe_mda: MDAnalysis universe
+      ligand_atoms (list): list of the atom of the guest made by selecting atoms from the mda_universe.
+      hbonds : all the Hbonds found by MDAnalysis.
+      debug_info (bool): True if Debug information is needed.
+
+  Returns:
+      host_guest_hbonds, list of Hbonds where one of the atoms is in the guest and the other is in the host; protein_atoms, list of the atom of the host made by selecting atoms from the mda_universe.
+  """  
+
+  #* H-bond Filter 1: Generating array where the donnor or acceptor atom is in the guest and the other is in the host. *#
+
+  print(f'\nFilter 1: donnor or acceptor atom must be in the guest and the other is in the host.')
 
   protein_atoms = universe_mda.select_atoms("protein")
 
@@ -145,7 +173,16 @@ def hbond_filter1(universe_mda,ligand_atoms, hbonds, debug_info):
   print(f'\n - Keeping {len(host_guest_hbonds)}/{len(hbonds)} H-bonds (total amount, not unique H-bonds).')
   return host_guest_hbonds, protein_atoms
 
-def hbond_population_counter(universe_mda,host_guest_hbonds):
+def hbond_population_counter(universe_mda,host_guest_hbonds:list):
+  """Counts the amount of frames that a particular Hbond has existed in the trajectory.
+
+  Args:
+      universe_mda: MDAnalysis universe.
+      host_guest_hbonds (list): list of Hbonds where one of the atoms is in the guest and the other is in the host.
+
+  Returns:
+      hbond_population, dictionary with information of the Hbond and the amount of frames it existed.
+  """  
   hbond_population = {}
 
   # Initial state of dictionary #
@@ -190,7 +227,20 @@ def hbond_population_counter(universe_mda,host_guest_hbonds):
 
   return hbond_population
 
-def hbond_filter2(n_frames,step_hbond,universe_mda,population_hbond,host_guest_hbonds,debug_info):
+def hbond_filter2(n_frames:int,step_hbond:int,universe_mda,population_hbond:float,host_guest_hbonds:list,debug_info:bool):
+  """Second filter of the Hbonds, the Hbonds must exist over a fraction of population_hbond of the trajectory to pass it. 
+
+  Args:
+      n_frames (int): amount of frames in the simulation.
+      step_hbond (int): Step size used to sample over frames when computing Hbonds.
+      universe_mda: MDAnalysis universe.
+      population_hbond (float): threshold where the hbond has to exist over that fraction of the simulation to pass through.
+      host_guest_hbonds (list): list of Hbonds where one of the atoms is in the guest and the other is in the host.
+      debug_info (bool): True if Debug information is needed.
+
+  Returns:
+      hbond_population, dictionary with the Hbonds that passed through the second filter.
+  """  
   #* H-bond Filter 2: Population of H-bonds *#
 
   print(f'\nFilter 2: The H-bond must be in {population_hbond*100} % of the simulation.')
@@ -218,7 +268,19 @@ def hbond_filter2(n_frames,step_hbond,universe_mda,population_hbond,host_guest_h
 
   return hbond_population
 
-def hbond_filter3(universe_mda,hbond_population,ligand_atoms, protein_atoms,debug_info):
+def hbond_filter3(universe_mda,hbond_population:dict,ligand_atoms:list, protein_atoms:list,debug_info:bool):
+  """The acceptor or donor in the Hbond has to be in the accepted_hbonds list,
+
+  Args:
+      universe_mda: MDAnalysis universe.
+      hbond_population (dict): dictionary with the Hbonds that passed through the second filter.
+      ligand_atoms (list): list of the atom of the guest made by selecting atoms from the mda_universe.
+      protein_atoms (list): list of the atom of the host made by selecting atoms from the mda_universe.
+      debug_info (bool): True if Debug information is needed.
+
+  Returns:
+      hbond_population, dictionary that passed through the third filter.
+  """  
   #* H-bond Filter 3:  Filtering H-bonds of where the acceptor or donnor is not N, O, F, S, Cl.*#
 
   print(f'\nFilter 3: Removing H-bonds where the acceptor or donnor is not in accepted Hbond atoms.')
@@ -287,7 +349,22 @@ def hbond_filter3(universe_mda,hbond_population,ligand_atoms, protein_atoms,debu
 
   return hbond_population
 
-def hbond_search(universe_mda, guest_resname, ligand_atoms, step_hbond, population_hbond, d_DH_cutoff, d_AH_cutoff, debug_info):
+def hbond_search(universe_mda, guest_resname:str, ligand_atoms:list, step_hbond:int, population_hbond:float, d_DH_cutoff:float, d_AH_cutoff:float, debug_info:bool):
+  """Searches for hydrogen bonds in the trajectory and uses other functions to filter through the hydrogen bonds.
+
+  Args:
+      universe_mda: MDAnalysis universe.
+      guest_resname (str): resname of the guest.
+      ligand_atoms (list): list of the atom of the guest made by selecting atoms from the mda_universe.
+      step_hbond (int): Step size used to sample over frames when computing Hbonds.
+      population_hbond (float): threshold where the hbond has to exist over that fraction of the simulation to pass through.
+      d_DH_cutoff (float): Maximum distance (angstrom) from the Donor to the H. D-H --- A
+      d_AH_cutoff (float): Maximum distance (angstrom) from the Acceptor to the H. D-H --- A
+      debug_info (bool): True if Debug information is needed.
+
+  Returns:
+      hbond_population, Hbonds that passed the filters; protein_atoms, list of the atom of the host made by selecting atoms from the mda_universe.
+  """  
   #! Step 2: H-bond !#
 
   #* Searching for H-bonds in the simulation *#
