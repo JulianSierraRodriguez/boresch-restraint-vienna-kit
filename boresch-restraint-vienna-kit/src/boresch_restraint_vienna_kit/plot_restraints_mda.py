@@ -4,7 +4,19 @@ import matplotlib.pyplot as plt
 import os
 from MDAnalysis.lib.distances import calc_bonds, calc_angles, calc_dihedrals
 
-def obtain_bonds(dist_array, universe, a1, a2, step):
+def obtain_bonds(dist_array:list, universe, a1, a2, step:int):
+  """Computes the distance from a1 to a2 and saves it in a list.
+
+  Args:
+      dist_array (list): list where the distances will be saved.
+      universe : MDAnalysis universe.
+      a1 : atom 1 selected previously from mda_universe.
+      a2 : atom 2 selected previously from mda_universe.
+      step (int): If we want to not compute for every step.
+
+  Returns:
+      dist_array, list with the computed distances.
+  """  
   for i, ts in enumerate(universe.trajectory[::step]):
     dist = calc_bonds(
       coords1=a1,
@@ -15,6 +27,19 @@ def obtain_bonds(dist_array, universe, a1, a2, step):
   return dist_array
 
 def obtain_angles(angles_array, universe, a1, a2, a3,step):
+  """Computes the angles between a1, a2 and a3, then saves it in a list.
+
+  Args:
+      angles_array (list): list where the angles will be saved.
+      universe : MDAnalysis universe.
+      a1 : atom 1 selected previously from mda_universe.
+      a2 : atom 2 selected previously from mda_universe.
+      a3 : atom 3 selected previously from mda_universe.
+      step (int): If we want to not compute for every step.
+
+  Returns:
+      angles_array, list with the computed angles.
+  """ 
   for i, ts in enumerate(universe.trajectory[::step]):
     angle = calc_angles(
       coords1=a1,
@@ -26,6 +51,20 @@ def obtain_angles(angles_array, universe, a1, a2, a3,step):
   return angles_array
 
 def obtain_dihedrals(dihedral_array, universe, a1, a2, a3, a4,step):
+  """Computes the dihedrals between a1, a2, a3 and a4, then saves it in a list.
+
+  Args:
+      dihedral_array (list): list where the angles will be saved.
+      universe : MDAnalysis universe.
+      a1 : atom 1 selected previously from mda_universe.
+      a2 : atom 2 selected previously from mda_universe.
+      a3 : atom 3 selected previously from mda_universe.
+      a4 : atom 4 selected previously from mda_universe.
+      step (int): If we want to not compute for every step.
+
+  Returns:
+      dihedral_array, list with the computed dihedrals.
+  """ 
   for i, ts in enumerate(universe.trajectory[::step]):
     dihedral = calc_dihedrals(
       coords1=a1,
@@ -37,13 +76,21 @@ def obtain_dihedrals(dihedral_array, universe, a1, a2, a3, a4,step):
     dihedral_array[i] = dihedral[0]
   return dihedral_array
 
-def center_dihedral(array):
-  for i in range(len(array)):
-    if array[i] < 30:
-      array[i] += 360
-  return array
+def plot_iter(fig, axs,arr1,arr2,arr3,arr4,arr5,arr6,color,label:str):
+  """We plot the six parameters in the same figure.
 
-def plot_iter(fig, axs,arr1,arr2,arr3,arr4,arr5,arr6,color,label):
+  Args:
+      fig : fig from plt
+      axs : axs fro plt
+      arr1 (list): This is a list with the parameters to plot. If Boresch restrain this is r_aA.
+      arr2 (list): This is a list with the parameters to plot. If Boresch restrain this is theta_A.
+      arr3 (list): This is a list with the parameters to plot. If Boresch restrain this is theta_B.
+      arr4 (list): This is a list with the parameters to plot. If Boresch restrain this is phi_A.
+      arr5 (list): This is a list with the parameters to plot. If Boresch restrain this is phi_B.
+      arr6 (list): This is a list with the parameters to plot. If Boresch restrain this is phi_C.
+      color : color for the plot.
+      label (str): label for one of them to use as legend of the system.
+  """  
   axs[0,0].plot(arr1, color=color, label=label)
   axs[0,1].plot(arr2, color=color )
   axs[1,0].plot(arr3, color=color )
@@ -51,7 +98,14 @@ def plot_iter(fig, axs,arr1,arr2,arr3,arr4,arr5,arr6,color,label):
   axs[2,0].plot(arr5, color=color )
   axs[2,1].plot(arr6, color=color )
 
-def post_plot(fig, axs,references):
+def post_plot(fig, axs, references:bool):
+  """Prints additional information after the loop. If references = True, the reference values have to been changed manually inside the function.
+
+  Args:
+      fig : fig from plt.
+      axs : axs fro plt.
+      references (bool): True if a line with a reference value is needed, the reference values have to been changed manually inside the function.
+  """  
   #! First plot
   axs[0,0].set_title('Distance Host-Guest ($R_A$)')
   axs[0,0].set_ylabel('$R_A$ / Å')
@@ -101,15 +155,29 @@ def post_plot(fig, axs,references):
   # plt.show()
 
 def plot_restraints(pdb_name:str,
-                    traj_name,
+                    traj_name:str,
                     step:int,
                     anchors:list,
-                    several_simulations:bool,
-                    total_simulations:int,
-                    host_idx_corrector:int,
-                    guest_idx_corrector:int,
-                    references:bool,
-                    figure_name:str):
+                    several_simulations:bool = False,
+                    total_simulations:int = 1,
+                    host_idx_corrector:int = 1,
+                    guest_idx_corrector:int = 2,
+                    references:bool = False,
+                    figure_name:str = 'restraint_plot'):
+  """Makes plot for the Boresch Restraints.
+
+  Args:
+      pdb_name (str): name of the PDB file, with the extension '.pdb' or topology filename.
+      traj_name (str): name of the trajectory, with its extension.
+      step (int): If we want to not compute for every step.
+      anchors (list): list with the atom indexes of the six anchors.
+      several_simulations (bool, optional): True if there is more than one trajectory to plot. Defaults to False.
+      total_simulations (int, optional): If there is more than one trajectory put the number. Defaults to 1.
+      host_idx_corrector (int, optional): MDAanalysis sometimes has a different indexing order, this is to correct the index for protein atoms. Defaults to 1.
+      guest_idx_corrector (int, optional): MDAanalysis sometimes has a different indexing order, this is to correct the index for ligand atoms. Defaults to 2.
+      references (bool, optional): True if a line with a reference value is needed, the reference values have to been changed manually inside the function. Defaults to False.
+      figure_name (str, optional): filename for the output of the plot, not extension needed. Defaults to 'restraint_plot'.
+  """  
   fig, axs = plt.subplots(3,2,sharex=True, figsize=(14,10))
 
   colors = plt.cm.tab10(np.linspace(0,1,10))
