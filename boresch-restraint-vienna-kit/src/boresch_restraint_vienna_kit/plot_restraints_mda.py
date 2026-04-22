@@ -14,7 +14,6 @@ def obtain_bonds(dist_array, universe, a1, a2, step):
     dist_array[i] = dist[0]
   return dist_array
 
-
 def obtain_angles(angles_array, universe, a1, a2, a3,step):
   for i, ts in enumerate(universe.trajectory[::step]):
     angle = calc_angles(
@@ -25,7 +24,6 @@ def obtain_angles(angles_array, universe, a1, a2, a3,step):
       )
     angles_array[i] = angle[0]
   return angles_array
-
 
 def obtain_dihedrals(dihedral_array, universe, a1, a2, a3, a4,step):
   for i, ts in enumerate(universe.trajectory[::step]):
@@ -45,7 +43,6 @@ def center_dihedral(array):
       array[i] += 360
   return array
 
-
 def plot_iter(fig, axs,arr1,arr2,arr3,arr4,arr5,arr6,color,label):
   axs[0,0].plot(arr1, color=color, label=label)
   axs[0,1].plot(arr2, color=color )
@@ -53,7 +50,6 @@ def plot_iter(fig, axs,arr1,arr2,arr3,arr4,arr5,arr6,color,label):
   axs[1,1].plot(arr4, color=color )
   axs[2,0].plot(arr5, color=color )
   axs[2,1].plot(arr6, color=color )
-
 
 def post_plot(fig, axs,references):
   #! First plot
@@ -103,7 +99,6 @@ def post_plot(fig, axs,references):
   plt.tight_layout(rect=[0,0,0.90,1])
 
   # plt.show()
-
 
 def plot_restraints(pdb_name:str,
                     traj_name,

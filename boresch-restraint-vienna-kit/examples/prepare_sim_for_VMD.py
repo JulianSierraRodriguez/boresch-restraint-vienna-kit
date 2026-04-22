@@ -37,8 +37,8 @@ transformations = [
     trans.wrap(universe_mda.atoms),    # wrap back into box (optional, can be removed)
 ]
 
-# print('Applying transformations')
-# universe_mda.trajectory.add_transformations(*transformations)
+print('Applying transformations')
+universe_mda.trajectory.add_transformations(*transformations)
 
 # def apply_rotation(universe, step):
 #     """Rotate the atom coordinates using the given rotation matrix and return the updated universe."""

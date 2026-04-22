@@ -679,6 +679,7 @@ def restraint_search_william(guest_sdf_name:str,
   unique_candidates_restraints = find_triads(universe_mda,hbond_population,mda_guest_candidates_idx,protein_atoms,debug_info)
   
   unique_candidates_restraints_angles = None
+  print('Generating copy of this set of candidates')
 
   original_candidates = unique_candidates_restraints.copy()
 

@@ -308,6 +308,19 @@ def setting_up_simulation(md_temperature: unit.Quantity,
                           topology,
                           system,
                           positions):
+  """We generate the integrator and simulation with the given parameters.
+
+  Args:
+      md_temperature (unit.Quantity): temperature at which you want the simulation.
+      friction_coeff (unit.Quantity): friction coefficient for the simulation.
+      timestep (unit.Quantity): timestep in femtoseconds.
+      topology : topology of the system.
+      system : system variable with properties
+      positions : positions of the atoms in the system 
+
+  Returns:
+      Integrator and simulation variables from OpenMM.
+  """  
   integrator = LangevinMiddleIntegrator(
     md_temperature,
     friction_coeff,
@@ -327,10 +340,21 @@ def setting_up_simulation(md_temperature: unit.Quantity,
   return integrator, simulation
 
 def minimization(simulation,
-                 min_tolerance,
-                 minimization_max_steps,
-                 pdb_minimization_final
+                 min_tolerance: unit.Quantity,
+                 minimization_max_steps:int,
+                 pdb_minimization_final:str
                  ):
+  """This functions performs a minimization of the given simulation.
+
+  Args:
+      simulation : simulation, can be obtained with function "setting_up_simulation"
+      min_tolerance (unit.Quantity): minimum energy tolerance per unit of length.
+      minimization_max_steps (int): maximum number of minimization steps.
+      pdb_minimization_final (str): namefile for the PDB generated after the minimization.
+
+  Returns:
+      simulation after minimization.
+  """  
   potential_energy_ini = simulation.context.getState(getEnergy=True).getPotentialEnergy()
   print(f'\nInitial potential energy: {potential_energy_ini}')
 
@@ -353,13 +377,29 @@ def minimization(simulation,
 def simulation_NVT(simulation,
                    integrator,
                    reporter_interval:int, 
-                   md_equil_nvt_length:unit.Quantity,
-                   timestep:unit.Quantity,
-                   md_temperature:unit.Quantity,
-                   temp_increment:int,
-                   md_steps_after_ramp:int,
-                   pdb_heating_final:str
+                   md_equil_nvt_length:unit.Quantity = 0.25*unit.nanosecond,
+                   timestep:unit.Quantity       = 2.0*unit.femtosecond,                   
+                   md_temperature:unit.Quantity = 298.15*unit.kelvin,
+                   temp_increment:int = 100,
+                   md_steps_after_ramp:int = 0,
+                   pdb_heating_final:str = 'NVT_system.pdb'
                    ):
+  """Performs a heating NVT simulation, it performs the amount of stages of heating for a given temperature increment in a given length of simulation.
+  Args:
+      simulation: simulation, can be obtained with function "setting_up_simulation"
+      integrator: integrator, can be obtained with function "setting_up_simulation"
+      reporter_interval (int): every this number of steps the reporter outputs information. 
+      md_equil_nvt_length (unit.Quantity, optional): length of the NVT simulation in units of times such as nanoseconds.. Defaults to 0.25*unit.nanosecond.
+      timestep (unit.Quantity, optional): timesteps of the simulation, must be the same that was given to the integrator. Defaults to 2.0*unit.femtosecond.
+      md_temperature (unit.Quantity, optional): Temperature of the simulation, objective temperature for the ramp.. Defaults to 298.15*unit.kelvin.
+      temp_increment (int, optional): Increments of temperature, the NVT simulation will be divided into stages at different temperatures following this increment. Defaults to 100.
+      md_steps_after_ramp (int, optional): number of steps that want to be done after finishing with the NVT simulation, to let the system stabilize further. Defaults to 0.
+      pdb_heating_final (str, optional): Name of the PDB file to output the system after the NVT simulation.  Defaults to 'NVT_system.pdb'. Defaults to 'NVT_system.pdb'.
+
+  Returns:
+      simulation after NVT equilibration
+  """  
+ 
   simulation.reporters.append(
     app.StateDataReporter(
       stdout,
@@ -400,17 +440,25 @@ def simulation_NVT(simulation,
 def simulation_NPT(simulation,
                    system,
                    timestep:unit.Quantity       = 2.0*unit.femtosecond,
-                   friction_coeff:unit.Quantity = 1.0*1/unit.picosecond,
                    md_temperature:unit.Quantity = 298.15*unit.kelvin,
                    md_equil_npt_length:unit.Quantity = 0.5*unit.nanosecond,
                    md_pressure:unit.Quantity = 1*unit.bar,
                    pdb_density_equil_final:str = 'NPT_system.pdb'
                    ):
-  integrator = LangevinMiddleIntegrator(
-      md_temperature,
-      friction_coeff,
-      timestep
-    )
+  """We perform an NPT simulation, at the beginning we add the barostat.
+
+  Args:
+      simulation : simulation, can be obtained with function "setting_up_simulation"
+      system : OpenMM system were the barostat is added. 
+      timestep (unit.Quantity, optional): timestep in units of times, usually femtosecond. Defaults to 2.0*unit.femtosecond.
+      md_temperature (unit.Quantity, optional): Temperature of the simulation, usually in Kelvin. Defaults to 298.15*unit.kelvin.
+      md_equil_npt_length (unit.Quantity, optional): Length of the NPT simulation, usually in nanoseconds. Defaults to 0.5*unit.nanosecond.
+      md_pressure (unit.Quantity, optional): Pressure of the simulation, usually in bar. Defaults to 1*unit.bar.
+      pdb_density_equil_final (str, optional): Name of the PDB file to output the system after the NVT simulation. Defaults to 'NPT_system.pdb'.
+
+  Returns:
+      simulation after NPT equilibration, system with barostat, npt_state to be able to start several simulations from the same last step of the NPT equilibration.
+  """  
 
   mdsteps = round(md_equil_npt_length/timestep)
   barostat = system.addForce(MonteCarloBarostat(md_pressure, md_temperature))
@@ -433,7 +481,18 @@ def simulation_NPT(simulation,
     )
   return simulation,system,npt_state
 
-def save_checkpoint_for_restart(iter,system,simulation,integrator):
+def save_checkpoint_for_restart(iter:int,system,simulation,integrator):
+  """We save several files to use as checkpoints, to be able to restart simulations from them.
+
+  Args:
+      iter (int): which step of the simulation is this, I usually use 0 for preparation simulation and then add 1 for each simulation we have done.
+      system : OpenMM system.
+      simulation: simulation, can be obtained with function "setting_up_simulation"
+      integrator: integrator, can be obtained with function "setting_up_simulation"
+
+  Returns:
+      Several xml with information on the system, state and integrator, useful when we run in a different machine; and a checkpoint file, from which a system can be restarted, we only need this one when we are on the same machine.
+  """  
   with open(f'system_{iter}.xml', 'w') as f:
     f.write(XmlSerializer.serialize(system))
   with open(f'integrator_{iter}.xml', 'w') as f:
@@ -472,8 +531,27 @@ def preparation_simulations(molecule_name:str,
                             md_equil_npt_length:unit.Quantity = 0.5*unit.nanosecond,
                             md_pressure:unit.Quantity = 1*unit.bar,
                             pdb_NPT_final:str = 'NPT_system.pdb'
-
                             ):
+  """It does all the preparation steps but the preparing from PDBank functions. It generates the system, minimizes, NVT equilibration and NPT equilibration.
+
+  Args:
+      molecule_name (str): name of the ligand sdf file, don't put the '.sdf' extension.
+      pdb_name (str): filename of the PDB with the solvated system (solvated_PDB = True) or filename of the PDB with the protein (solvated_PDB = False). Put the extension '.pdb' 
+      solvated_PDB (bool): True if pdb name is already solvated.
+      folder_prep (str, optional): name of the folder where all the preparatory steps will be done. Defaults to 'system_prep'.
+      timestep (unit.Quantity, optional): timestep in units of times, usually femtosecond. Defaults to 2.0*unit.femtosecond.
+      friction_coeff (unit.Quantity, optional): friction_coeff (unit.Quantity): friction coefficient for the simulation.
+      md_temperature (unit.Quantity, optional): temperature at which you want the simulation, usually in kelvin. Defaults to 298.15*unit.kelvin.
+      minimization_max_steps (int, optional): maximum number of minimization steps. Defaults to 5000.
+      min_tolerance (unit.Quantity, optional): minimum energy tolerance per unit of length. Defaults to 4*unit.kilojoule_per_mole/unit.nanometer.
+      pdb_minimization_final (str, optional): namefile for the PDB generated after the minimization. Defaults to 'minimized_system.pdb'.
+      reporter_interval (int, optional): every this number of steps the reporter outputs information. Defaults to 5_000.
+      temp_increment (int, optional): Increments of temperature, the NVT simulation will be divided into stages at different temperatures following this increment. Defaults to 100.
+      md_steps_after_ramp (unit.Quantity, optional): number of steps that want to be done after finishing with the NVT simulation, to let the system stabilize further. Defaults to 0.
+      md_equil_npt_length (unit.Quantity, optional): Length of the NPT simulation, usually in nanoseconds. Defaults to 0.5*unit.nanosecond.
+      md_pressure (unit.Quantity, optional): Pressure of the simulation, usually in bar. Defaults to 1*unit.bar.
+      pdb_NPT_final (str, optional): Name of the PDB file to output the system after the NVT simulation. Defaults to 'NPT_system.pdb'.
+  """  
 
   path = pathlib.Path(f'./{folder_prep}')
   path.mkdir(exist_ok=True)

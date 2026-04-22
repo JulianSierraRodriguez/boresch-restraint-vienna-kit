@@ -53,8 +53,6 @@ def deprotonate_carboxylic_acids(mol):
 
 deprot_mol = deprotonate_carboxylic_acids(mol)
 Chem.SanitizeMol(deprot_mol)
-
-
 w = Chem.SDWriter(f'lig_{lig_resname}_deprot.sdf')
 w.write(deprot_mol)
 w.close()
