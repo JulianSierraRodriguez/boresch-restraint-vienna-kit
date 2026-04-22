@@ -311,7 +311,7 @@ def setting_up_simulation(md_temperature: unit.Quantity,
   """We generate the integrator and simulation with the given parameters.
 
   Args:
-      md_temperature (unit.Quantity): temperature at which you want the simulation.
+      md_temperature (unit.Quantity): temperature of the simulation.
       friction_coeff (unit.Quantity): friction coefficient for the simulation.
       timestep (unit.Quantity): timestep in femtoseconds.
       topology : topology of the system.
@@ -621,12 +621,24 @@ def preparation_simulations(molecule_name:str,
 
   os.chdir('..')
 
-def set_up_with_checkpoint(iter,
-                           folder_prep,
+def set_up_with_checkpoint(iter:int,
+                           folder_prep:str,
                            timestep:unit.Quantity       = 2.0*unit.femtosecond,
                            friction_coeff:unit.Quantity = 1.0*1/unit.picosecond,
                            md_temperature:unit.Quantity = 298.15*unit.kelvin,
 ):
+  """Sets up a simulation to restart one finished previously.
+
+  Args:
+      iter (int): index of the simulation about to start, not the one with the checkpoint.
+      folder_prep (str): foldername of the directory with the preparation simulations.
+      timestep (unit.Quantity, optional): timestep in units of times, usually femtosecond. Defaults to 2.0*unit.femtosecond.
+      friction_coeff (unit.Quantity, optional): friction coefficient for the simulation. Defaults to 1.0*1/unit.picosecond.
+      md_temperature (unit.Quantity, optional): temperature of the simulation. Defaults to 298.15*unit.kelvin.
+
+  Returns:
+      simulation, system, integrator and pdb information from the previous simulation.
+  """  
   
   if iter == 1:
     folder = folder_prep
@@ -688,6 +700,19 @@ def reporter_setup(simulation,
                    reporter_interval:int        = 5_000,
                    traj_interval:int            = 1_000,
                    ):
+  """Generates the reporters for the output and the trajectory.
+
+  Args:
+      simulation : simulation, usually obtained from 'set_up_with_checkpoint' function. 
+      iter (int): index of the simulation to do.
+      traj_name (str): trajectory name before the index and the '.dcd' extension.
+      mdsteps (int): total amount of steps to do, usually given previously as unit of time and converted automatically with time_step.
+      reporter_interval (int, optional): the amount of steps before reporting again in the output. Defaults to 5_000.
+      traj_interval (int, optional): the amount of steps before writing trajectory step again. Defaults to 1_000.
+
+  Returns:
+      simulation with the reporters, traj_filename
+  """  
   
   simulation.reporters.append(
     app.StateDataReporter(
@@ -712,11 +737,26 @@ def production_simulations( folder_prep:str              = 'system_prep',
                             traj_interval:int            = 1_000,
                             traj_numb:int                = 3,
                             md_prod_total:int            = 150.0*unit.nanosecond,
-                            ini:int                      = 2,
+                            ini:int                      = 1,
                             fin:int                      = 3
                             ):
+  """Runs the production simulations restarting from the preparation simulation (ini = 1) or from another production trajectory (i > 1).
 
+  Args:
+      folder_prep (str, optional): foldername of the directory with the preparation simulations. Defaults to 'system_prep'.
+      timestep (unit.Quantity, optional): timestep in units of times, usually femtosecond. Defaults to 2.0*unit.femtosecond.
+      friction_coeff (unit.Quantity, optional): friction coefficient for the simulation. Defaults to 1.0*1/unit.picosecond.
+      md_temperature (unit.Quantity, optional): temperature of the simulation. Defaults to 298.15*unit.kelvin.
+      reporter_interval (int, optional): the amount of steps before reporting again in the output. Defaults to 5_000.
+      traj_interval (int, optional): the amount of steps before writing trajectory step again. Defaults to 1_000.
+      traj_numb (int, optional): Amount of trajectories you want to divide the md_prod_total in. Defaults to 3.
+      md_prod_total (int, optional): Total lenght in units of time of the simulation, usually in nanosecond. Defaults to 150.0*unit.nanosecond.
+      ini (int, optional): index of the first trajectory to do. Defaults to 1.
+      fin (int, optional): index of the last trajectory to do. Defaults to 3.
 
+  Returns:
+      traj_name, filename before the index and the '.dcd' extension.
+  """  
 
   md_prod_length = md_prod_total / traj_numb
   len_md = str(md_prod_length.value_in_unit(unit.nanosecond))
@@ -737,7 +777,7 @@ def production_simulations( folder_prep:str              = 'system_prep',
 
   for i in range(ini,fin+1):
 
-    simulation,system,integrator,pdb = set_up_with_checkpoint(i,folder_prep)
+    simulation,system,integrator,pdb = set_up_with_checkpoint(i,folder_prep,timestep,friction_coeff,md_temperature)
 
     mdsteps = round(md_prod_length/timestep)
 
