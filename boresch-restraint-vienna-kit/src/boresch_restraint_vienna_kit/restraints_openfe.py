@@ -16,6 +16,19 @@ def restraint_search_openfe(pdb_name_search: str,
                             path :str = '.',
                             temperature :float = 298.15 
 ):
+  """Uses OpenFE's functions to perform OpenFE's ABFE anchor search for Boresch Restraints.
+
+  Args:
+      pdb_name_search (str): PDB filename to optain topology from.
+      guest_sdf_name (str): SDF filename of tje ligand to have bonding information on the ligand.
+      guest_resname (str): Resname of ligand.
+      trajectory_name (str): filename of the trajectory.
+      path (str, optional): if there is a path from where the script is being exectued at.. Defaults to '.'.
+      temperature (float, optional): temperature of the simulation. Defaults to 298.15.
+
+  Returns:
+      universe_mda, MDAnalisys universe; geom.host_atoms, list of atom indexes of the host (protein); geom.guest_atoms list of atom indexes of the guest (ligand); last_frame_vars, values of the Boresch parameters in the last frame, OpenFE uses them as the equilibrium values for the restraints.
+  """  
 
   base = Path(path)
   pdb = PDBFile(pdb_name_search)
