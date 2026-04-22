@@ -57,27 +57,46 @@ def openfe_anchors_to_names(universe_mda, host_atoms,guest_atoms):
 
   return resname_L, resname_P, resid_L, resid_P, atom_names
 
-def load_pdb_without_waters(path_pdb):
-    with open(path_pdb, "r") as f:
-        lines = f.readlines()
+def load_pdb_without_waters(path_pdb:str):
+  """Removes all the water molecules from the PDB
 
-    filtered_lines = [
-        line for line in lines
-        if not (line.startswith("HETATM") and "HOH" in line[17:21])
-        and not (line.startswith("HETATM") and "WAT" in line[17:21])
-        and not (line.startswith("HETATM") and "SOL" in line[17:21])
-    ]
+  Args:
+      path_pdb (str): PDB system filename.
 
-    pdb_block = "".join(filtered_lines)
+  Raises:
+      ValueError: the mol parameter is empty something failed with the pdb_block.
 
-    mol = Chem.MolFromPDBBlock(pdb_block, removeHs=False, sanitize=False)
-    if mol is None:
-        raise ValueError("RDKit failed to parse filtered PDB")
+  Returns:
+      mol, RDKit information on the protein and ligand.
+  """    
+  with open(path_pdb, "r") as f:
+      lines = f.readlines()
 
-    return mol
+  filtered_lines = [
+      line for line in lines
+      if not (line.startswith("HETATM") and "HOH" in line[17:21])
+      and not (line.startswith("HETATM") and "WAT" in line[17:21])
+      and not (line.startswith("HETATM") and "SOL" in line[17:21])
+  ]
 
-def extract_submol(mol, selection):
-  """Return a new Mol containing only selected atoms"""
+  pdb_block = "".join(filtered_lines)
+
+  mol = Chem.MolFromPDBBlock(pdb_block, removeHs=False, sanitize=False)
+  if mol is None:
+      raise ValueError("RDKit failed to parse filtered PDB")
+
+  return mol
+
+def extract_submol(mol, selection:dict):
+  """Return a new Mol containing only selected atoms, the residue of the protein that the ligand is anchored to.
+
+  Args:
+      mol : RDKit information on the protein and ligand.
+      selection (dict): {resid, resname}
+
+  Returns:
+      emol.GetMol(), substructure extracted from the PDB of the residue; idx_map, dictionary mapping atom indices from the original molecule mol to new submolecule res.
+  """  
   emol = Chem.RWMol()
 
   idx_map = {}
@@ -107,7 +126,16 @@ def extract_submol(mol, selection):
 
   return emol.GetMol(), idx_map
 
-def find_atom(mol, atomname):
+def find_atom(mol, atomname:str):
+  """Helper that loops over atoms in mol looking for an atom name, it returns the atom index of that atom, it helps us link the index to the structure from the SDF, which does not have indices, to be able to plot them later.
+
+  Args:
+      mol : RDKit molecule.
+      atomname (str): atomname to find in mol, then we assign it to the SDF atom.
+
+  Returns:
+      if found, the atom index if not, None.
+  """  
   for atom in mol.GetAtoms():
     info = atom.GetPDBResidueInfo()
     if info and info.GetName().strip() == atomname:
@@ -123,6 +151,21 @@ def drawing(path_pdb:str,
             anchors_names:list,
             figure_name:str
             ):
+  """Generates a 2D SVG figure of a ligand protein anchor system.
+
+  Args:
+      path_pdb (str): Path to the PDB input file that contains the protein-ligand system.
+      path_lig_sdf (str): Path to the SDF input file that contains the ligand.
+      resname_lig (str): Resname of the ligand.
+      resid_lig (int): Resid of the ligand.
+      resname_prot (str): resname of the residue anchored to the ligand.
+      resid_prot (int): resid of the residue anchored to the ligand.
+      anchors_names (list): list with the atom names of the anchors.
+      figure_name (str): output filename for the figure, without extension.
+
+  Returns:
+      The figure in and SVG file.
+  """  
   # mol = Chem.MolFromPDBFile(path_pdb, removeHs=False)
   mol = load_pdb_without_waters(path_pdb)
 
