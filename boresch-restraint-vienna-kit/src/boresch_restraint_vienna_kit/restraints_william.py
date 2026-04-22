@@ -447,7 +447,7 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
 
   return triads_guest_atoms, triads_host_atoms
 
-def find_triads(universe_mda,hbond_population,mda_guest_candidates_idx,protein_atoms,debug_info):
+def find_triads(universe_mda,hbond_population:dict,mda_guest_candidates_idx:list,protein_atoms:list,debug_info:bool):
   #! Step 3: Finding triads of atoms for guest and host !#
 
   print('\n 3. Searching anchor host-guest cominations. \n ')
