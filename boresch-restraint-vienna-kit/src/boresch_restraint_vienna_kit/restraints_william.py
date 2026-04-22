@@ -80,12 +80,12 @@ def setting_up_mda(pdb_name:str,traj_name:str,guest_resname:str,guest_candidates
 
   Args:
       pdb_name (str): PDB file of the system, with '.pdb' extension or topology file.
-      traj_name (str): trajectory file, with extension.
+      traj_name (str): trajectory filename, with extension.
       guest_resname (str): resname of the guest.
       guest_candidates_ids (list): list of atom indexes of the candidates from the guest. These indexes are of the ligand on it's own.
 
   Returns:
-      mda_guest_candidates_idx, guest candidates atom indexes, indexing the full system; universe_mda, MDAnalysis universe; ligand_atoms, list of the atom of the guest made by selecting atoms from the mda_universe.
+      mda_guest_candidates_idx, guest candidates atom indexes, indexing from the full system; universe_mda, MDAnalysis universe; ligand_atoms, list of the atom of the guest made by selecting atoms from the mda_universe.
   """  
   #! MDAnalysis set up !#
 
@@ -393,7 +393,17 @@ def hbond_search(universe_mda, guest_resname:str, ligand_atoms:list, step_hbond:
 
   return hbond_population, protein_atoms
 
-def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
+def anchor_finder(mda_guest_candidates_idx:list,universe_mda,g0,hx):
+  """looks for bonded atoms to candidates from the Hbonds, this atoms must be in the guest_candidate list.
+
+  Args:
+      mda_guest_candidates_idx (list): guest candidates atom indexes, indexing from the full system.
+      universe_mda: MDAnalysis universe.
+      g0 : MDAnalysis selected atom from the guest involved in the Hbond.
+      hx : MDAnalysis selected atom from the host involved in the Hbond.
+  Returns:
+      triads_guest_atoms, lists of triads of atoms that can be candidates from g0, to be g1 and g2, [g0,g1,g2]; triads_host_atoms, list of two triads from the host, [C,CA,N] or [N,CA,C] from the Hbond involved in the Hbond, [h0,h1,h2].
+  """  
   print('\n   - Selecting Triads of anchor candidates for Guest.')
   
   bonded_g0 = []
@@ -448,6 +458,18 @@ def anchor_finder(mda_guest_candidates_idx,universe_mda,g0,hx):
   return triads_guest_atoms, triads_host_atoms
 
 def find_triads(universe_mda,hbond_population:dict,mda_guest_candidates_idx:list,protein_atoms:list,debug_info:bool):
+  """Finds triads using the "anchor_finder" function and then makes the possible combinations between the different found sets for each Hbond.
+
+  Args:
+      universe_mda: MDAnalysis universe.
+      hbond_population (dict): dictionary with the Hbonds that passed the filters.
+      mda_guest_candidates_idx (list): guest candidates atom indexes, indexing from the full system.
+      protein_atoms (list): list of the atom of the host made by selecting atoms from the mda_universe.
+      debug_info (bool): True if Debug information is needed.
+
+  Returns:
+      unique_candidates_restraints, list of unique sets of candidates to be anchors.
+  """  
   #! Step 3: Finding triads of atoms for guest and host !#
 
   print('\n 3. Searching anchor host-guest cominations. \n ')
@@ -503,7 +525,17 @@ def find_triads(universe_mda,hbond_population:dict,mda_guest_candidates_idx:list
 
   return unique_candidates_restraints
 
-def compute_angles_restr(universe_mda,unique_candidates_restraints,set_idx):
+def compute_angles_restr(universe_mda,unique_candidates_restraints:list,set_idx:int):
+  """Computes the values for Boresch angles restraints in a given step of the trajectory
+
+  Args:
+      universe_mda: MDAnalysis universe.
+      unique_candidates_restraints (list): list of unique sets of candidates to be anchors.
+      set_idx (int): index from the candidates set we are measuring in unique_candidates_restraints.
+
+  Returns:
+      Values for theta_A and theta_B
+  """  
 
   h0 = universe_mda.select_atoms(f' index {unique_candidates_restraints[set_idx][0]}')
   h1 = universe_mda.select_atoms(f' index {unique_candidates_restraints[set_idx][1]}')
@@ -520,7 +552,20 @@ def compute_angles_restr(universe_mda,unique_candidates_restraints,set_idx):
 
   return theta_A, theta_B
 
-def check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,debug_info):
+def check_angles(universe_mda,min_angle:float,max_angle:float,unique_candidates_restraints:list,debug_info:bool):
+  """Filter for the sets of candidates, first it checks if the angles in the first step of the trajectory are within the limits, if they are not, they are marked to be removed. If they are, then, all the angles in the trajectory are measured. If at any point the angles are outside the limits, the set of candidates are marked to be removed. This filter can be restrictive, outside this function in function 'restraint_search_william' there is a loop, that makes the limits less restrictive if all sets of candidates are removed.
+
+  Args:
+      universe_mda: MDAnalysis universe.
+      min_angle (float): lower limit for the angles in degrees.
+      max_angle (float): higher limit for the angles in degrees.
+      unique_candidates_restraints (list): list of unique sets of candidates to be anchors.
+      debug_info (bool): True if Debug information is needed.
+
+  Returns:
+      unique_candidates_restraints_angles, list with the sets of candidates that passed the angle filter.
+  """  
+
   #! Step 4: Checking angles !#
 
   print('\n 4. Filtering possible anchors by their angle. \n ')
@@ -579,7 +624,18 @@ def check_angles(universe_mda,min_angle,max_angle,unique_candidates_restraints,d
   
   return unique_candidates_restraints_angles
 
-def check_distance_guest_COM(universe_mda,unique_candidates_restraints,ligand_atoms,debug_info):
+def check_distance_guest_COM(universe_mda,unique_candidates_restraints:list,ligand_atoms:list,debug_info:bool):
+  """Filter where we measure the distance from the g0 atom of each set to the Center of Mass of the ligand, and we keep only the ones with the lowest value.
+
+  Args:
+      universe_mda: MDAnalysis universe.
+      unique_candidates_restraints (list): list with the sets of candidates that passed the angle filter.
+      ligand_atoms (list): list of the atom of the guest made by selecting atoms from the mda_universe.
+      debug_info (bool): True if Debug information is needed.
+
+  Returns:
+      final_candidates: list of candidates that passed the Center of Mass filter.
+  """  
   #! Step 5:  Selecting the ones with the closest G0 to the COM of the ligand !#
 
   print('\n 5. Keeping sets with G0 closest to Center of Mass of the Guest. \n')
@@ -630,7 +686,17 @@ def circ_std(angles):
   R = max(R, 1e-8) # if R goes to 0, then std would go to inf...
   return np.sqrt(-2 * np.log(R))
 
-def compute_restraints_statistics(universe_mda,final_candidates,set_idx):
+def compute_restraints_statistics(universe_mda,final_candidates:list,set_idx:int):
+  """We compute the average and standard deviation for the atoms in final_candidates[set_idx].
+
+  Args:
+      universe_mda: MDAnalysis universe.
+      final_candidates (list): list of candidates that passed the Center of Mass filter.
+      set_idx (int): index from the candidates set we are measuring in final_candidates.
+
+  Returns:
+      average and standard deviation for each of the parameters, then it also return the values of the parameters in the last frame.
+  """  
   print(f'   - Working on set {set_idx}  {final_candidates[set_idx]}')
   print(f'                       {[universe_mda.atoms[idx].name for idx in final_candidates[set_idx]]}')
   h0 = universe_mda.select_atoms(f' index {final_candidates[set_idx][0]}')
@@ -695,7 +761,16 @@ def compute_restraints_statistics(universe_mda,final_candidates,set_idx):
 
   return avg_r_aA, std_r_aA, avg_theta_A, std_theta_A, avg_theta_B, std_theta_B, avg_phi_A, std_phi_A, avg_phi_B, std_phi_B, avg_phi_C, std_phi_C,last_frame_vars
 
-def scoring_candidates(universe_mda,final_candidates):
+def scoring_candidates(universe_mda,final_candidates:list):
+  """We measure the averages and standard deviation during the trajectories for each of the final candidates, to compute a score, the set with the lowest score will be chosen as the anchors.
+
+  Args:
+      universe_mda: MDAnalysis universe.
+      final_candidates (list): list of candidates that passed the Center of Mass filter.
+
+  Returns:
+      final_candidates[lowest_score_idx], anchors to be used; last_frames_vars[lowest_score_idx] values of the Boresch restraints on the last frame, usually used as the equilibrium values for the restraints.
+  """  
 
   #! Step 6 : Scoring the remaining candidates !#
 
@@ -745,8 +820,24 @@ def restraint_search_william(guest_sdf_name:str,
                              min_angle:float = 45,
                              max_angle:float = 135
                              ):
-  """Full procedure
-  """
+  """Full procedure to obtain anchors using William's procedure.
+
+  Args:
+      guest_sdf_name (str): SDF file of the guest/ligand, with '.sdf' extension.
+      debug_info (bool): True if Debug information is needed.
+      pdb_name_search (str): PDB file of the system, with '.pdb' extension or topology file.
+      traj_name (str): trajectory filename, with extension.
+      guest_resname (str): resname of the guest.
+      step_hbond (int, optional): Step size used to sample over frames when computing Hbonds. Defaults to 1.
+      population_hbond (float, optional): threshold where the hbond has to exist over that fraction of the simulation to pass through. Defaults to 0.5.
+      d_DH_cutoff (float, optional): Maximum distance (angstrom) from the Donor to the H. D-H --- A. Defaults to 1.35.
+      d_AH_cutoff (float, optional): Maximum distance (angstrom) from the Acceptor to the H. D-H --- A. Defaults to 3.3.
+      min_angle (float, optional): lower limit for the angles in degrees. Defaults to 45.
+      max_angle (float, optional): higher limit for the angles in degrees. Defaults to 135.
+
+  Returns:
+      _type_: _description_
+  """  
   guest_candidates_ids = find_guest_candidates(guest_sdf_name,debug_info)
 
   mda_guest_candidates_idx, universe_mda, ligand_atoms = setting_up_mda(pdb_name_search,traj_name,guest_resname,guest_candidates_ids)
