@@ -14,8 +14,7 @@ dependencies = [
   "pint",
   "openpyxl",
   "matplotlib",
-  "pdbfixer",
-  "dimorphite_dl"
+  "pdbfixer"
 ]
 
 [build-system]
