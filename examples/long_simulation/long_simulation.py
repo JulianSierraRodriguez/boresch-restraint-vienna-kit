@@ -57,8 +57,11 @@ w = Chem.SDWriter(f'lig_{lig_resname}_deprot.sdf')
 w.write(deprot_mol)
 w.close()
 
+sdf_name = f'lig_{lig_resname}_deprot.sdf'
+molecule_name = sdf_name.split('.')[0]
 
-preparation_simulations(molecule_name            = f'lig_{lig_resname}_deprot' ,
+
+preparation_simulations(molecule_name            = molecule_name ,
                         pdb_name                 = f'{pdb_name}_CLEAN.pdb',
                         solvated_PDB             = False,
                         folder_prep              = 'system_prep',
