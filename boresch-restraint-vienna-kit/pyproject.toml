@@ -14,7 +14,8 @@ dependencies = [
   "pint",
   "openpyxl",
   "matplotlib",
-  "pdbfixer"
+  "pdbfixer",
+  "tqdm"
 ]
 
 [build-system]

@@ -22,45 +22,42 @@ with mda.Writer("first_1ns_4.dcd", n_atoms=u.atoms.n_atoms) as W:
   for ts in u.trajectory[:n_frames_1ns]:
     W.write(u.atoms)
 
-guest_candidates_ids = find_guest_candidates(ref_sdf,False)
 
-mda_guest_candidates_idx, universe_mda, ligand_atoms = setting_up_mda(ref_pdb,f'first_1ns_4.dcd','UNK',guest_candidates_ids)
+anchors, universe_mda, last_frame_vars = restraint_search_william(guest_sdf_name   = ref_sdf,
+                                                                  debug_info       = False,
+                                                                  pdb_name_search  = ref_pdb,
+                                                                  traj_name        = f'first_1ns.dcd',
+                                                                  guest_resname    = 'UNK',
+                                                                  step_hbond       = 5, 
+                                                                  population_hbond = 0.5,
+                                                                  d_DH_cutoff      = 1.35, 
+                                                                  d_AH_cutoff      = 3.3,
+                                                                  min_angle        = 45,
+                                                                  max_angle        = 135
+                                                   )
 
-# anchors, universe_mda, last_frame_vars = restraint_search_william(guest_sdf_name   = ref_sdf,
-#                                                                   debug_info       = False,
-#                                                                   pdb_name_search  = ref_pdb,
-#                                                                   traj_name        = f'first_1ns.dcd',
-#                                                                   guest_resname    = 'UNK',
-#                                                                   step_hbond       = 1, 
-#                                                                   population_hbond = 0.5,
-#                                                                   d_DH_cutoff      = 1.35, 
-#                                                                   d_AH_cutoff      = 3.3,
-#                                                                   min_angle        = 45,
-#                                                                   max_angle        = 135
-#                                                    )
+resname_L, resname_P, resid_L, resid_P, atom_names = williams_anchors_to_names(universe_mda, anchors)  
 
-# resname_L, resname_P, resid_L, resid_P, atom_names = williams_anchors_to_names(universe_mda, anchors)  
+drawing(path_pdb      = ref_pdb, 
+        path_lig_sdf  = ref_sdf, 
+        resname_lig   = resname_L,
+        resid_lig     = resid_L, 
+        resname_prot  = resname_P,
+        resid_prot    = resid_P,
+        anchors_names = atom_names,
+        figure_name   = f'complex_william'
+              )
 
-# drawing(path_pdb      = ref_pdb, 
-#         path_lig_sdf  = ref_sdf, 
-#         resname_lig   = resname_L,
-#         resid_lig     = resid_L, 
-#         resname_prot  = resname_P,
-#         resid_prot    = resid_P,
-#         anchors_names = atom_names,
-#         figure_name   = f'complex_william'
-#               )
-
-# plot_restraints(pdb_name = ref_pdb,
-#                 traj_name = ['traj_50ns_1.dcd','traj_50ns_2.dcd','traj_50ns_3.dcd'],
-#                 step = 10,
-#                 anchors = anchors,
-#                 several_simulations = False,
-#                 total_simulations = 1,
-#                 host_idx_corrector = 1,
-#                 guest_idx_corrector = 2,
-#                 references=False,
-#                 figure_name = 'ptp1b_024_W')
+plot_restraints(pdb_name = ref_pdb,
+                traj_name = ['traj_50ns_1.dcd','traj_50ns_2.dcd','traj_50ns_3.dcd'],
+                step = 10,
+                anchors = anchors,
+                several_simulations = False,
+                total_simulations = 1,
+                host_idx_corrector = 1,
+                guest_idx_corrector = 2,
+                references=False,
+                figure_name = 'ptp1b_024_W')
 
 u, host_atoms, guest_atoms, last_frame_vars = restraint_search_openfe(pdb_name_search = ref_pdb,
                                                            guest_sdf_name  = ref_sdf,

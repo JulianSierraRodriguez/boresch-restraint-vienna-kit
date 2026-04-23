@@ -525,7 +525,7 @@ def find_triads(universe_mda,hbond_population:dict,mda_guest_candidates_idx:list
 
   return unique_candidates_restraints
 
-def compute_angles_restr(universe_mda,unique_candidates_restraints:list,set_idx:int):
+def compute_angles_restr(h0,h1,g0,g1):
   """Computes the values for Boresch angles restraints in a given step of the trajectory
 
   Args:
@@ -536,11 +536,6 @@ def compute_angles_restr(universe_mda,unique_candidates_restraints:list,set_idx:
   Returns:
       Values for theta_A and theta_B
   """  
-
-  h0 = universe_mda.select_atoms(f' index {unique_candidates_restraints[set_idx][0]}')
-  h1 = universe_mda.select_atoms(f' index {unique_candidates_restraints[set_idx][1]}')
-  g0 = universe_mda.select_atoms(f' index {unique_candidates_restraints[set_idx][3]}')
-  g1 = universe_mda.select_atoms(f' index {unique_candidates_restraints[set_idx][4]}')
 
   pos_h0 = h0.positions[0]
   pos_h1 = h1.positions[0]
@@ -576,7 +571,12 @@ def check_angles(universe_mda,min_angle:float,max_angle:float,unique_candidates_
     print(f' - Working on set {i}  {unique_candidates_restraints[i]}')
     print(f'                     {[universe_mda.atoms[idx].name for idx in unique_candidates_restraints[i]]}')
 
-    theta_A, theta_B = compute_angles_restr(universe_mda,unique_candidates_restraints,i)
+    h0 = universe_mda.select_atoms(f' index {unique_candidates_restraints[i][0]}')
+    h1 = universe_mda.select_atoms(f' index {unique_candidates_restraints[i][1]}')
+    g0 = universe_mda.select_atoms(f' index {unique_candidates_restraints[i][3]}')
+    g1 = universe_mda.select_atoms(f' index {unique_candidates_restraints[i][4]}')
+
+    theta_A, theta_B = compute_angles_restr(h0,h1,g0,g1)
 
     removed = False
 
@@ -594,11 +594,11 @@ def check_angles(universe_mda,min_angle:float,max_angle:float,unique_candidates_
       if debug_info:
         print('frame     theta_A     theta_B')
 
-      for ts in universe_mda.trajectory:
+      from tqdm import tqdm 
+      for ts in tqdm(universe_mda.trajectory):
         if removed:
           break
-
-        theta_A, theta_B = compute_angles_restr(universe_mda,unique_candidates_restraints,i)
+        theta_A, theta_B = compute_angles_restr(h0,h1,g0,g1)
 
         if debug_info:
           print(ts.frame, theta_A, theta_B)
