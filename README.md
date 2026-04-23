@@ -14,7 +14,7 @@ Once we are in the conda environment, we install this module using pip in the fo
 
 ```bash 
 git clone https://github.com/JulianSierraRodriguez/boresch-restrain-vienna-kit.git
-cd boresch-restrain-vienna-kit/boresch-restraint-vienna-kit/
+cd boresch-restraint-vienna-kit/boresch-restraint-vienna-kit/
 pip install -e .
 ```
 
@@ -33,11 +33,20 @@ pip install -e .
 
 # Examples
 
-## comparison_search_algorithms
-
-## long_simulation
+In the same folder where you perform the pip install command, there is a directory named "examples", inside here we have several with the needed inputs to run them in the directory.
 
 ## simple_example
+
+## comparison_search_algorithms
+
+Inside the directory "comparison_search_algorithms", we have a script that performs ten times the MD procedure, and then uses two search algorithms on the same trajectories to compare the results. The algorithms are:
+
+-  OpenFE 1.9.1 boresch restraint search from the ABFE workflow.
+-  Boresch restraint search by Wu et al. (https://doi.org/10.1021/acs.jctc.5c00861)
+
+This script performs the search of both algorithms and then plots the restraints on the residues involved
+
+## long_simulation
 
 ```python 
 your_code = do_some_stuff
