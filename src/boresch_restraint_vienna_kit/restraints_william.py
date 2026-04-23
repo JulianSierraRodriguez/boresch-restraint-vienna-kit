@@ -11,6 +11,7 @@ from MDAnalysis.analysis.hydrogenbonds import HydrogenBondAnalysis
 from MDAnalysis.lib.distances import calc_bonds, calc_angles, calc_dihedrals
 from rich.pretty import Pretty
 from rich.console import Console
+from tqdm import tqdm 
 from scipy.stats import circvar
 
 #? constants (optional)
@@ -594,9 +595,10 @@ def check_angles(universe_mda,min_angle:float,max_angle:float,unique_candidates_
       if debug_info:
         print('frame     theta_A     theta_B')
 
-      from tqdm import tqdm 
-      for ts in tqdm(universe_mda.trajectory):
+      pbar = tqdm(universe_mda.trajectory)
+      for ts in pbar :
         if removed:
+          pbar.close()
           break
         theta_A, theta_B = compute_angles_restr(h0,h1,g0,g1)
 
@@ -647,7 +649,8 @@ def check_distance_guest_COM(universe_mda,unique_candidates_restraints:list,liga
     pos_g0 = g0.positions[0]
 
     dists = []
-    for ts in universe_mda.trajectory:
+    pbar = tqdm(universe_mda.trajectory)
+    for ts in pbar:
       pos_g0 = g0.positions[0]
       com = ligand_atoms.center_of_mass()
       dist = np.linalg.norm(pos_g0 - com)
@@ -713,7 +716,8 @@ def compute_restraints_statistics(universe_mda,final_candidates:list,set_idx:int
   phi_B_time = []
   phi_C_time = []
 
-  for ts in universe_mda.trajectory:
+  pbar = tqdm(universe_mda.trajectory)
+  for ts in pbar:
     pos_h0 = h0.positions[0]
     pos_h1 = h1.positions[0]
     pos_h2 = h2.positions[0]
