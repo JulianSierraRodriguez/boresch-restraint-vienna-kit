@@ -8,8 +8,15 @@ To be able to use this module the best thing is to create a conda environment wi
 
 ```bash 
 conda create -c conda-forge -n openfe openfe=1.9.1 python=3.13
+conda activate openfe
 ```
+Once we are in the conda environment, we install this module using pip in the folder with pyproject.toml:
 
+```bash 
+git clone https://github.com/JulianSierraRodriguez/boresch-restrain-vienna-kit.git
+cd boresch-restrain-vienna-kit/boresch-restraint-vienna-kit/
+pip install -e .
+```
 
 # Possible modules
 
