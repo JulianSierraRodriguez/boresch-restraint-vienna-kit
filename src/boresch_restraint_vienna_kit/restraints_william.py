@@ -647,6 +647,7 @@ def check_distance_guest_COM(universe_mda,unique_candidates_restraints:list,liga
   for i in range(len(unique_candidates_restraints)):
     g0 = universe_mda.select_atoms(f' index {unique_candidates_restraints[i][3]}')
     pos_g0 = g0.positions[0]
+    print(f'   - G0 ({g0[0].resname}{g0[0].resid}-{g0[0].name}) distance to COM:')
 
     dists = []
     pbar = tqdm(universe_mda.trajectory)
