@@ -9,6 +9,10 @@ import pandas as pd
 
 number_repeats = 10
 
+pdb_name = 'p38_protein_CLEAN.pdb'
+sdf_name = '2f.sdf'
+
+molecule_name = sdf_name.split('.')[0]
 
 host_anchor_list_W = []
 guest_anchor_list_W = []
@@ -42,10 +46,8 @@ for i in range(number_repeats):
   os.system(f'cp *.sdf {folder}')
   os.chdir(folder)
   
-
-
-  preparation_simulations(molecule_name            = '2f' ,
-                          pdb_name                 = 'p38_protein_CLEAN.pdb',
+  preparation_simulations(molecule_name            = molecule_name ,
+                          pdb_name                 = pdb_name,
                           solvated_PDB             = False,
                           folder_prep              = 'system_prep',
                           timestep                 = 2.0*unit.femtosecond,
@@ -76,7 +78,7 @@ for i in range(number_repeats):
                           fin               = 1
                           )
 
-  anchors, universe_mda, last_frame_vars = restraint_search_william(guest_sdf_name   = '2f.sdf',
+  anchors, universe_mda, last_frame_vars = restraint_search_william(guest_sdf_name   = sdf_name,
                                                    debug_info       = False,
                                                    pdb_name_search  = 'last_frame_1.pdb',
                                                    traj_name        = f'{traj_name}_1.dcd',
@@ -106,7 +108,7 @@ for i in range(number_repeats):
   
 
   drawing(path_pdb      = 'last_frame_1.pdb', 
-          path_lig_sdf  = '2f.sdf', 
+          path_lig_sdf  = sdf_name, 
           resname_lig   = resname_L,
           resid_lig     = resid_L, 
           resname_prot  = resname_P,
@@ -117,7 +119,7 @@ for i in range(number_repeats):
 
   #we dont want to use this universe because the ligand is no longer 1, openfe makes it 351 (protein has 350)
   u, host_atoms, guest_atoms, last_frame_vars = restraint_search_openfe(pdb_name_search = 'last_frame_1.pdb',
-                                                           guest_sdf_name  = '2f.sdf',
+                                                           guest_sdf_name  = sdf_name,
                                                            guest_resname   = 'UNK',
                                                            trajectory_name = f'{traj_name}_1.dcd',
                                                            path            = '.',
@@ -140,7 +142,7 @@ for i in range(number_repeats):
   phi_C_openfe.append(last_frame_vars[5])
 
   drawing(path_pdb      = 'last_frame_1.pdb', 
-          path_lig_sdf  = '2f.sdf', 
+          path_lig_sdf  = sdf_name, 
           resname_lig   = resname_L,
           resid_lig     = resid_L, 
           resname_prot  = resname_P,
