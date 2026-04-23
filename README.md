@@ -39,49 +39,62 @@ It provides three main workflows:
 
 This module implements a function that uses OpenFE's anchor-search algorithm for Boresch restraints in their ABFE workflow.
 
-After running this workflow you obtain the six anchors for the Boresch restraints [h0,h1,h2,g0,g1,g2] and the equilibrium parameters to be used in the restraints.
+After execution, it returns the six anchors atoms for the Boresch restraints ```[h0,h1,h2,g0,g1,g2]```, along with the equilibrium parameters required to define the restraints.
 
 ## restraints_william
 
-This module containts all utilities required to run the search algorith from Wu et al. (https://doi.org/10.1021/acs.jctc.5c00861) in the workflow ```restraint_search_william```.
+This module containts utilities required to run the anchor-search algorith from Wu et al. (https://doi.org/10.1021/acs.jctc.5c00861) in the workflow ```restraint_search_william```.
+
+After execution, it returns the six anchors atoms for the Boresch restraints ```[h0,h1,h2,g0,g1,g2]```, along with the equilibrium parameters required to define the restraints.
 
 ## plot restraints_mda
 
-This modules has the utilities to use the anchors obtained from one of the anchor-searching algorithms to plot the Boresch parameters throughout a given trajectory. This module uses MDAnalysis to obtain the parameters values and matplotlib to plot them.
+This modules provides utilities to compute and visualize Boresch restraint Parameters along a trajectory.
+
+Using MDAnalysis, it evaluates restraint geometries over time and generates plots using Matplotlib.
 
 ## drawing_boresch_restraints
 
-This modules has the utilities to use the anchors obtained from one of the anchor-searching algorithms to plot the anchors in 2D representation of the ligand and the residue it is anchored to, using the RDKit package.
+This modules provides tools to visualize selected anchor atoms in a 2D representation of ligand-Protein complex using RDKit.
+
+It helps map the selected anchors onto chemical structures for interpretability.
 
 # Examples
 
-In the same directory where you perform the pip install command, there is a directory named "examples", inside here we have several with the needed inputs to run them in the directory.
+The ```examples/``` directory (located in the repository root after installation) contains ready-to-run workflows with the required input files.
 
 ## simple_example
 
-Inside the 'simple_example' This test is a simple example test, where we start with a CIF and SDF from the Protein Data Bank and perform a short simulation, then it searches for anchors and draws them using RDKit.
+This is a minimal test case that starts from CIF and SDF files obtained from the Protein Data Bank. It performs a short simulation, runs anchor selection, and visualizes the resulting anchors using RDKit.
+
+To run the simple test:
+```bash 
+python simple_example.py
+```
 
 ## comparison_search_algorithms
 
-Inside the directory 'comparison_search_algorithms', we have a script that performs ten times the MD procedure, and then uses two search algorithms on the same trajectories to compare the results. The algorithms are:
-
--  OpenFE 1.9.1 boresch restraint search from the ABFE workflow.
--  Boresch restraint search by Wu et al. (https://doi.org/10.1021/acs.jctc.5c00861)
+This directory contains, we have a script that performs ten times the MD procedure, and then uses the two anchor-search algorithms on the same trajectories to compare the results.
 
 This script performs the search of both algorithms and then plots the restraints on the residues involved using RDKit.
 
-To run the script get inside the comparison_search_algorithms and run:
+To run the comparison (Warning, it takes time):
 
 ```bash 
 python comparison_W_openfe.py
 ```
 
-This will make 10 new directories where it will run the simulations and save the figures, and at the end will produce several spreadsheets with the results, to compare both algorithms.
+This generates 10 simulation runs in separate directories, saves visualizations, and produces summary spreadsheets for comparison of both methods.
 
 ## long_simulation
 
+This directory contains scripts for longer and more detailed simulations:
 In the 'long_simulation' directory we have several scripts:
 
-* long_simulation.py : uses module ```simulation_openMM``` to perform longer simulations, using checkpointing for restarting trajectories.
-* analysis_long_sim.py : uses modules ```restraints_william```,```restraints_openfe```,```drawing_boresch_restraints``` and ```plot_restraints_mda```, extract the first 1ns of the simulation to find anchors with both algorithms, draw the found anchors with RDKit and plot the Boresch Parameters throughout the trajectory.
-* prepare_sim_for_VMD.py : combines several trajectories into one, adding a step so the file is lighter, it also removes the waters and centers the protein.
+* ```long_simulation.py``` : runs extended MD simulations using checkpointing vi ```simulation_openMM```.
+* ```analysis_long_sim.py``` : extract the first 1ns of the simulation to find anchors with both algorithms, draw the found anchors with RDKit and plot the Boresch Parameters throughout the trajectory using:
+  * ```restraints_william```
+  * ```restraints_openfe```
+  * ```drawing_boresch_restraints```
+  * ```plot_restraints_mda```
+* ```prepare_sim_for_VMD.py``` : combines trajectories into a single file, reduces size, removes the waters and centers the protein for visualization in VMD.
