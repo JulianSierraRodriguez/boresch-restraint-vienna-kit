@@ -1,4 +1,4 @@
-from boresch_restraint_vienna_kit.simulation_julian import *
+from boresch_restraint_vienna_kit.simulations_openMM import *
 from boresch_restraint_vienna_kit.restraints_william import *
 from boresch_restraint_vienna_kit.restraints_openfe import *
 from boresch_restraint_vienna_kit.drawing_boresch_restraints import *
@@ -19,6 +19,7 @@ preparing_from_PDBank(pdb_name,
 supp = Chem.SDMolSupplier(f'lig_{lig_resname}.sdf', removeHs=False)
 mol = supp[0]
 
+# This function is only to deprotonate the carboxylic atoms of the ligand, it can be removed.
 def deprotonate_carboxylic_acids(mol):
     rw = Chem.RWMol(mol)
     
@@ -45,14 +46,14 @@ def deprotonate_carboxylic_acids(mol):
 
 deprot_mol = deprotonate_carboxylic_acids(mol)
 Chem.SanitizeMol(deprot_mol)
-
-
-w = Chem.SDWriter(f'lig_{lig_resname}_deprot.sdf')
+sdf_name = f'lig_{lig_resname}_deprot.sdf'
+w = Chem.SDWriter(sdf_name)
 w.write(deprot_mol)
 w.close()
+molecule_name = sdf_name.split('.')[0]
 
 
-preparation_simulations(molecule_name            = f'lig_{lig_resname}_deprot' ,
+preparation_simulations(molecule_name            = molecule_name ,
                         pdb_name                 = f'{pdb_name}_CLEAN.pdb',
                         solvated_PDB             = False,
                         folder_prep              = 'system_prep',
@@ -83,8 +84,8 @@ traj_name = production_simulations( folder_prep       = 'system_prep',
                         ini               = 1,
                         fin               = 1
                         )
-
-anchors, universe_mda, last_frame_vars = restraint_search_william(guest_sdf_name   = f'2f.sdf',
+print(traj_name)
+anchors, universe_mda, last_frame_vars = restraint_search_william(guest_sdf_name   = sdf_name,
                                                  debug_info       = False,
                                                  pdb_name_search  = 'last_frame_1.pdb',
                                                  traj_name        = 'traj_1ns_1.dcd',
@@ -97,12 +98,11 @@ anchors, universe_mda, last_frame_vars = restraint_search_william(guest_sdf_name
                                                  max_angle        = 135
                                                  )
 
-print(last_frame_vars)
 
 resname_L, resname_P, resid_L, resid_P, atom_names = williams_anchors_to_names(universe_mda, anchors)
 
 drawing(path_pdb      = 'last_frame_1.pdb', 
-        path_lig_sdf  = f'2f.sdf', 
+        path_lig_sdf  = sdf_name, 
         resname_lig   = resname_L,
         resid_lig     = resid_L, 
         resname_prot  = resname_P,
@@ -113,7 +113,7 @@ drawing(path_pdb      = 'last_frame_1.pdb',
 
 #we dont want to use this universe because the ligand is no longer 1, openfe makes it 351 (protein has 350)
 u, host_atoms, guest_atoms, last_frame_vars = restraint_search_openfe(pdb_name_search = 'last_frame_1.pdb',
-                                                         guest_sdf_name  = f'2f.sdf',
+                                                         guest_sdf_name  = sdf_name,
                                                          guest_resname   = 'UNK',
                                                          trajectory_name = 'traj_1ns_1.dcd',
                                                          path            = '.',
@@ -126,7 +126,7 @@ resname_L, resname_P, resid_L, resid_P, atom_names = openfe_anchors_to_names(uni
 
 
 drawing(path_pdb      = 'last_frame_1.pdb', 
-        path_lig_sdf  = f'2f.sdf', 
+        path_lig_sdf  = sdf_name, 
         resname_lig   = resname_L,
         resid_lig     = resid_L, 
         resname_prot  = resname_P,

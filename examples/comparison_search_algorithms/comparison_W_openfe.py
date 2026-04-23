@@ -1,4 +1,4 @@
-from boresch_restraint_vienna_kit.simulation_julian import *
+from boresch_restraint_vienna_kit.simulations_openMM import *
 from boresch_restraint_vienna_kit.restraints_william import *
 from boresch_restraint_vienna_kit.restraints_openfe import *
 from boresch_restraint_vienna_kit.drawing_boresch_restraints import *
