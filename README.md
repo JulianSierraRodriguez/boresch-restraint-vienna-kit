@@ -1,17 +1,19 @@
 # About this module
 
-This module was developed during Julian Sierra's research stay on March-April 2026 with Prof. Stefan Boresch. This module is focused on testing and comparing two anchor search algorithm for Boresch restraints using OpenMM, MDAnalysis and OpenFE.
+This module was developed during Julian Sierra's research stay on (March-April 2026) with Prof. Stefan Boresch. It focuses on implementing and comparing two anchor-search algorithm for Boresch restraints using OpenMM, MDAnalysis and OpenFE.
+
+The goal of this toolkit is to support reproducible testing and benchmarking of restraint placement strategies in moleculer dynamic simulations. 
 
 # How to install this module
 
-To be able to use this module the best thing is to create a conda environment with the OpenFE 1.9.1 and python 3.13, which was the one existing when this module was being developed.
+To use this module, it is recomended to create a dedicated Conda environment using OpenFE 1.9.1 and Python 3.13, which were the versions used during development:
 
 ```bash 
 conda create -c conda-forge -n openfe openfe=1.9.1 python=3.13
 conda activate openfe
 ```
 
-Once we are in the conda environment, we install this module using pip inside the folder:
+Once the environment is activated, install package from the source:
 
 ```bash 
 git clone https://github.com/JulianSierraRodriguez/boresch-restraint-vienna-kit.git
@@ -19,11 +21,19 @@ cd boresch-restraint-vienna-kit/
 pip install -e .
 ```
 
-# Possible modules
+# Available modules
 
-There several possible functions divided into different modules:
+The package is organized into several functional modules:
 
 ## simulations_openMM
+
+This module containts all utilities required for system preparation and molecular dynamics simulations using OpenMM.
+
+It provides three main workflows:
+
+* ```preparing_from_PDBank``` : prepares a structure from the Protein Data Bank.
+* ```preparation_simulations``` : generates OpenMM system and runs preparation steps including minimization, NVT heating and NPT equilibration.
+* ```production_simulations```, performs production molecular dynamics using checkpointing for restartability.
 
 ## restraints_openfe
 
