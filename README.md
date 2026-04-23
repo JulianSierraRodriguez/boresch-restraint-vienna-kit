@@ -1,6 +1,6 @@
 # About this module
 
-
+This module was developed during Julian Sierra's research stay on March-April 2026 with Prof. Stefan Boresch. This module is focused on testing and comparing two anchor search algorithm for Boresch restraints using OpenMM, MDAnalysis and OpenFE.
 
 # How to install this module
 
@@ -21,7 +21,9 @@ pip install -e .
 
 # Possible modules
 
-## simulation_julian
+There several possible functions divided into different modules:
+
+## simulations_openMM
 
 ## restraints_openfe
 
