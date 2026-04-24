@@ -98,3 +98,21 @@ In the 'long_simulation' directory we have several scripts:
   * ```drawing_boresch_restraints```
   * ```plot_restraints_mda```
 * ```prepare_sim_for_VMD.py``` : combines trajectories into a single file, reduces size, removes the waters and centers the protein for visualization in VMD.
+
+To run the long simulation (Warning, it takes time):
+
+```bash 
+python long_simulation.py
+```
+
+To run the analysis for the long simulation (Warning, it takes time and you need the outputs from long_simulation.py):
+
+```bash 
+python analysis_long_sim.py
+```
+
+To run the preparation of VMD for the long simulation (Warning, you need the outputs from long_simulation.py):
+
+```bash 
+python prepare_sim_for_VMD.py
+```
